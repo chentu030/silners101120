@@ -132,12 +132,10 @@ const NewDashboard: React.FC = () => {
     };
 
     if (showLoadingScreen) {
-        return <LoadingScreen onComplete={() => setShowLoadingScreen(false)} />;
+        return <LoadingScreen onComplete={() => setShowLoadingScreen(false)} isLoading={loading} />;
     }
 
-    if (loading) {
-        return null;
-    }
+
 
     return (
         <div className="new-dashboard">

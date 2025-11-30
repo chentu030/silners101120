@@ -67,44 +67,51 @@ const Statistics: React.FC = () => {
         setLoading(true);
         const suffix = timePeriod === '3y' ? '3y' : '5y';
 
-        // Always fetch stock info once
-        if (stockInfo.length === 0) {
-            fetch(`${import.meta.env.BASE_URL}data/stock_info.json`)
-                .then(res => res.json())
-                .then(data => setStockInfo(data))
-                .catch(err => console.error("Failed to load stock info:", err));
-        }
+        const fetchData = async () => {
+            try {
+                const promises: Promise<any>[] = [];
 
-        // Fetch Raw Stats (needed for both modes now, for enrichment)
-        fetch(`${import.meta.env.BASE_URL}data/raw_stats_${suffix}.json`)
-            .then(res => res.json())
-            .then((data: RawStatData[]) => {
-                setRawData(data);
-                // Only set loading false here if in 'all' mode
-                if (viewMode === 'all') setLoading(false);
-            })
-            .catch(err => {
-                console.error("Failed to load raw stats:", err);
-                if (viewMode === 'all') setLoading(false);
-            });
+                // 1. Stock Info (if not loaded)
+                if (stockInfo.length === 0) {
+                    promises.push(
+                        fetch(`${import.meta.env.BASE_URL}data/stock_info.json`)
+                            .then(res => res.json())
+                            .then(data => setStockInfo(data))
+                    );
+                }
 
-        if (viewMode === 'rankings') {
-            fetch(`${import.meta.env.BASE_URL}data/rankings_${suffix}.json`)
-                .then(res => res.json())
-                .then((data: RankingsMap) => {
-                    setRankingsData(data);
-                    // Reset selected sheet if not in new data, else keep or default to first
-                    const sheets = Object.keys(data);
-                    if (sheets.length > 0 && !sheets.includes(selectedSheet)) {
-                        setSelectedSheet(sheets[0]);
-                    }
-                    setLoading(false);
-                })
-                .catch(err => {
-                    console.error("Failed to load rankings:", err);
-                    setLoading(false);
-                });
-        }
+                // 2. Raw Stats (always needed)
+                promises.push(
+                    fetch(`${import.meta.env.BASE_URL}data/raw_stats_${suffix}.json`)
+                        .then(res => res.json())
+                        .then((data: RawStatData[]) => setRawData(data))
+                );
+
+                // 3. Rankings (only if in rankings mode)
+                if (viewMode === 'rankings') {
+                    promises.push(
+                        fetch(`${import.meta.env.BASE_URL}data/rankings_${suffix}.json`)
+                            .then(res => res.json())
+                            .then((data: RankingsMap) => {
+                                setRankingsData(data);
+                                // Reset selected sheet if needed
+                                const sheets = Object.keys(data);
+                                if (sheets.length > 0 && !sheets.includes(selectedSheet)) {
+                                    setSelectedSheet(sheets[0]);
+                                }
+                            })
+                    );
+                }
+
+                await Promise.all(promises);
+            } catch (err) {
+                console.error("Failed to load data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
     }, [viewMode, timePeriod, stockInfo.length]);
 
     // Determine data to display

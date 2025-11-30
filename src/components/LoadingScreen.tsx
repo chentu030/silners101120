@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './LoadingScreen.scss';
 
-const LoadingScreen: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
+const LoadingScreen: React.FC<{ onComplete?: () => void; isLoading?: boolean }> = ({ onComplete, isLoading = false }) => {
     const [progress, setProgress] = useState(0);
     const [textIndex, setTextIndex] = useState(0);
 
@@ -17,11 +17,22 @@ const LoadingScreen: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =>
     useEffect(() => {
         const timer = setInterval(() => {
             setProgress(prev => {
+                // If still loading externally, cap at 90%
+                if (isLoading && prev >= 90) {
+                    return 90;
+                }
+
+                // If loading finished (isLoading is false) and we are at or above 90, go to 100
+                if (!isLoading && prev >= 90) {
+                    return 100;
+                }
+
                 if (prev >= 100) {
                     clearInterval(timer);
                     if (onComplete) setTimeout(onComplete, 500);
                     return 100;
                 }
+
                 // Non-linear progress for realism
                 const increment = Math.random() * 15;
                 return Math.min(prev + increment, 100);
@@ -29,7 +40,7 @@ const LoadingScreen: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =>
         }, 200);
 
         return () => clearInterval(timer);
-    }, [onComplete]);
+    }, [onComplete, isLoading]);
 
     useEffect(() => {
         // Change text based on progress
