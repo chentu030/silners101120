@@ -148,6 +148,25 @@
             }
         }
     }
+
+    @media (max-width: 768px) {
+        .loading-content {
+            padding: 0 2rem;
+            gap: 1.5rem;
+        }
+
+        .logo-container {
+            .logo-text {
+                font-size: 2rem;
+            }
+        }
+
+        .progress-container {
+            .progress-bar {
+                height: 3px;
+            }
+        }
+    }
 }
 
 @keyframes pulse {
