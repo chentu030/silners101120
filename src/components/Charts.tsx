@@ -114,7 +114,16 @@ export const SimpleScatterChart: React.FC<ScatterProps> = ({ data, xKey, yKey, x
         },
         scales: {
             x: { title: { display: true, text: xLabel }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            y: { title: { display: true, text: yLabel }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: (v) => isPercentage ? v + '%' : v } }
+            y: {
+                title: { display: true, text: yLabel },
+                grid: { color: 'rgba(255,255,255,0.05)' },
+                ticks: {
+                    callback: (v: string | number) => {
+                        const val = Number(v);
+                        return isPercentage ? val.toFixed(2) + '%' : val.toFixed(2);
+                    }
+                }
+            }
         }
     };
 
@@ -273,10 +282,21 @@ export const HistogramChart: React.FC<HistogramProps> = ({ data, dataKey, color 
                         const items = ctx[0].dataset.binItems[idx] as BrokerData[];
                         // Sort by date desc
                         const sorted = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                        return sorted.map(d => {
+
+                        const maxItems = 8;
+                        const displayItems = sorted.slice(0, maxItems);
+                        const remaining = sorted.length - maxItems;
+
+                        const lines = displayItems.map(d => {
                             const val = d[dataKey] as number;
                             return `${d.broker} (${d.date}): ${val.toFixed(2)} | EPS:${d.epsNext}`;
                         });
+
+                        if (remaining > 0) {
+                            lines.push(`...還有 ${remaining} 筆`);
+                        }
+
+                        return lines;
                     }
                 }
             }
@@ -447,11 +467,27 @@ export const RatingDistribution: React.FC<ChartProps> = ({ data }) => {
                         const label = ctx.label;
                         const brokers = ctx.dataset.items[idx] as string[];
 
-                        // Wrap brokers if too many
-                        const brokerList = brokers.join(', ');
+                        // Wrap brokers logic
+                        const maxLineLength = 20;
+                        const lines: string[] = [];
+                        let currentLine = "(";
+
+                        brokers.forEach((broker, i) => {
+                            const separator = i === 0 ? "" : ", ";
+                            const nextPart = separator + broker;
+
+                            if (currentLine.length + nextPart.length > maxLineLength) {
+                                lines.push(currentLine);
+                                currentLine = " " + broker; // Start new line
+                            } else {
+                                currentLine += nextPart;
+                            }
+                        });
+                        lines.push(currentLine + ")");
+
                         return [
                             `${label}: ${count} 家`,
-                            `(${brokerList})`
+                            ...lines
                         ];
                     }
                 }
