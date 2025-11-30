@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Calendar, BarChart2, List, Activity } from 'lucide-react';
 import JSZip from 'jszip';
-import Papa from 'papaparse';
+// import Papa from 'papaparse';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -63,11 +63,15 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
     }, []);
 
     const parseDoubleColumnCSV = (csvText: string) => {
-        const results = Papa.parse(csvText, { header: false, skipEmptyLines: true });
-        const rows = results.data as string[][];
+        // Manual parsing because PapaParse failed to detect newlines correctly in some files
+        const lines = csvText.split(/\r?\n/);
+        const rows = lines.map(line => line.split(','));
+
         let dataRows: any[] = [];
         let headerIndex = -1;
-        for (let i = 0; i < Math.min(10, rows.length); i++) {
+
+        // Find header row index
+        for (let i = 0; i < Math.min(20, rows.length); i++) {
             if (rows[i][1] && rows[i][1].includes('券商')) {
                 headerIndex = i;
                 break;
@@ -78,21 +82,34 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
 
         for (let i = headerIndex + 1; i < rows.length; i++) {
             const row = rows[i];
+
+            // Skip empty rows or rows with insufficient columns
+            if (row.length < 2) continue;
+
+            // Left side (indices 0-4)
             if (row[1]) {
-                dataRows.push({
-                    broker: row[1].replace(/^\d+/, '').trim(),
-                    price: parseFloat(row[2]) || 0,
-                    buyVol: parseFloat(row[3]) || 0,
-                    sellVol: parseFloat(row[4]) || 0
-                });
+                const brokerName = row[1].replace(/^\d+/, '').trim();
+                if (brokerName) {
+                    dataRows.push({
+                        broker: brokerName,
+                        price: parseFloat(row[2]) || 0,
+                        buyVol: parseFloat(row[3]) || 0,
+                        sellVol: parseFloat(row[4]) || 0
+                    });
+                }
             }
-            if (row.length > 6 && row[7]) {
-                dataRows.push({
-                    broker: row[7].replace(/^\d+/, '').trim(),
-                    price: parseFloat(row[8]) || 0,
-                    buyVol: parseFloat(row[9]) || 0,
-                    sellVol: parseFloat(row[10]) || 0
-                });
+
+            // Right side (indices 6-10)
+            if (row.length > 7 && row[7]) {
+                const brokerName = row[7].replace(/^\d+/, '').trim();
+                if (brokerName) {
+                    dataRows.push({
+                        broker: brokerName,
+                        price: parseFloat(row[8]) || 0,
+                        buyVol: parseFloat(row[9]) || 0,
+                        sellVol: parseFloat(row[10]) || 0
+                    });
+                }
             }
         }
         return dataRows;
