@@ -50,6 +50,7 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
     const [data, setData] = useState<any>(null);
     const [error, setError] = useState('');
     const [zipCache, setZipCache] = useState<Map<string, JSZip>>(new Map());
+    const [topN, setTopN] = useState(40);
 
     useEffect(() => {
         // Fetch available dates
@@ -225,6 +226,15 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
                     />
                 </div>
+                <div className="control-group">
+                    <label>Top N</label>
+                    <input
+                        type="number"
+                        value={topN}
+                        onChange={e => setTopN(Math.max(1, parseInt(e.target.value) || 1))}
+                        style={{ width: '80px' }}
+                    />
+                </div>
                 <button className="search-btn" onClick={handleSearch} disabled={loading}>
                     {loading ? 'Loading...' : 'Search'}
                 </button>
@@ -260,7 +270,7 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
 
                 {data && (
                     <>
-                        {activeTab === 'charts' && <BrokerageCharts data={data} />}
+                        {activeTab === 'charts' && <BrokerageCharts data={data} topN={topN} />}
                         {activeTab === 'scan' && <BrokerageScanner />}
                         {activeTab === 'query' && <BrokerageQuery data={data} />}
                     </>
@@ -270,168 +280,247 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
     );
 };
 
-const BrokerageCharts = ({ data }: { data: any }) => {
-    const topBuyers = useMemo(() => {
-        return [...data.summary].sort((a: any, b: any) => b.netVol - a.netVol).slice(0, 40);
-    }, [data]);
+const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
+    const { topBuyers, topSellers } = useMemo(() => {
+        const sorted = [...data.summary].sort((a: any, b: any) => b.netVol - a.netVol);
+        // Top Buyers are at the beginning (positive netVol)
+        // Top Sellers are at the end (negative netVol)
 
-    const topSellers = useMemo(() => {
-        return [...data.summary].sort((a: any, b: any) => a.netVol - b.netVol).slice(0, 40);
-    }, [data]);
+        const buyers = sorted.filter((b: any) => b.netVol > 0).slice(0, topN);
+        const sellers = sorted.filter((b: any) => b.netVol < 0).reverse().slice(0, topN); // Reverse to get largest negative first
 
-    // Calculate dynamic width based on number of bars
-    // 80 bars (40 buy + 40 sell) * 30px per bar = 2400px minimum
-    const totalBars = topBuyers.length + topSellers.length;
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const chartWidth = Math.max(windowWidth - 40, totalBars * 25);
+        return { topBuyers: buyers, topSellers: sellers };
+    }, [data, topN]);
 
-    const chartOptions = {
+    // --- Split Bar Chart Logic ---
+    const barChartBrokers = [...topBuyers, ...topSellers];
+
+    // Calculate dynamic height based on number of bars
+    const totalBars = barChartBrokers.length;
+    // For horizontal bar chart, we need height, not width
+    const chartHeight = Math.max(500, totalBars * 30);
+
+    const barChartOptions = {
+        indexAxis: 'y' as const, // Horizontal bar chart
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: 'Top 40 Brokers Net Buy/Sell' },
-        },
-        scales: {
-            y: {
-                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                ticks: { color: '#94a3b8' }
-            },
-            x: {
-                grid: { display: false },
-                ticks: { color: '#94a3b8' }
-            }
-        }
-    };
-
-    const chartData = {
-        labels: [...topBuyers.map((b: any) => b.broker), ...topSellers.map((b: any) => b.broker)],
-        datasets: [
-            {
-                label: 'Net Volume',
-                data: [...topBuyers.map((b: any) => b.netVol), ...topSellers.map((b: any) => b.netVol)],
-                backgroundColor: (context: any) => {
-                    const value = context.raw;
-                    return value > 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(16, 185, 129, 0.8)';
-                },
-            },
-        ],
-    };
-
-    // Scatter Plot Data
-    // We want to show points for the top brokers we selected
-    const relevantBrokers = new Set([...topBuyers, ...topSellers].map(b => b.broker));
-
-    const scatterPoints = data.summary
-        .filter((b: any) => relevantBrokers.has(b.broker))
-        .map((b: any) => ({
-            x: b.netVol,
-            y: (b.netVol > 0 ? b.avgBuyPrice : b.avgSellPrice) || 0,
-            broker: b.broker
-        }));
-
-    const scatterData = {
-        datasets: [
-            {
-                label: 'Brokerage Points',
-                data: scatterPoints,
-                backgroundColor: (context: any) => {
-                    const val = context.raw?.x;
-                    return val > 0 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(16, 185, 129, 0.6)';
-                },
-            }
-        ]
-    };
-
-    const scatterOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            title: { display: true, text: 'Brokerage Points (Price vs Net Volume)' },
+            title: { display: true, text: `Top ${topN} Brokers Net Buy/Sell` },
             tooltip: {
                 callbacks: {
                     label: (context: any) => {
-                        const point = context.raw;
-                        return `${point.broker}: ${point.x} vol @ $${point.y.toFixed(2)}`;
+                        const val = context.raw;
+                        // Show absolute value in tooltip
+                        return `${context.dataset.label}: ${Math.abs(val)} vol`;
                     }
                 }
             }
         },
         scales: {
             x: {
-                title: { display: true, text: 'Net Volume', color: '#94a3b8' },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                ticks: { color: '#94a3b8' }
+                ticks: {
+                    color: '#94a3b8',
+                    callback: (value: any) => Math.abs(value) // Show absolute values on axis
+                }
             },
             y: {
-                title: { display: true, text: 'Avg Price', color: '#94a3b8' },
+                grid: { display: false },
+                ticks: { color: '#94a3b8' }
+            }
+        }
+    };
+
+    const buyData = barChartBrokers.map((b: any) => b.netVol > 0 ? -b.netVol : 0);
+    const sellData = barChartBrokers.map((b: any) => b.netVol < 0 ? -b.netVol : 0);
+
+    const finalBarData = {
+        labels: barChartBrokers.map((b: any) => b.broker),
+        datasets: [
+            {
+                label: 'Net Buy (Left)',
+                data: buyData,
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            },
+            {
+                label: 'Net Sell (Right)',
+                data: sellData,
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+            }
+        ]
+    };
+
+
+    // --- Broker vs Price Scatter Chart Logic ---
+    const relevantBrokersSet = new Set(barChartBrokers.map(b => b.broker));
+
+    // We need to map broker names to indices for the X-axis
+    const brokerToIndex = new Map(barChartBrokers.map((b, i) => [b.broker, i]));
+
+    const scatterPoints = data.details
+        .filter((row: any) => relevantBrokersSet.has(row.broker))
+        .map((row: any) => {
+            const brokerIndex = brokerToIndex.get(row.broker);
+            if (brokerIndex === undefined) return null;
+
+            const points = [];
+            if (row.buyVol > 0) {
+                points.push({
+                    x: brokerIndex,
+                    y: row.price,
+                    r: Math.sqrt(row.buyVol) * 2, // Bubble size
+                    type: 'buy',
+                    vol: row.buyVol,
+                    broker: row.broker
+                });
+            }
+            if (row.sellVol > 0) {
+                points.push({
+                    x: brokerIndex,
+                    y: row.price,
+                    r: Math.sqrt(row.sellVol) * 2, // Bubble size
+                    type: 'sell',
+                    vol: row.sellVol,
+                    broker: row.broker
+                });
+            }
+            return points;
+        })
+        .flat()
+        .filter(Boolean);
+
+    const scatterChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' as const },
+            title: { display: true, text: `Top ${topN} Brokers Transaction Details (Price vs Broker)` },
+            tooltip: {
+                callbacks: {
+                    label: (context: any) => {
+                        const point = context.raw;
+                        return `${point.broker} (${point.type}): ${point.vol} vol @ $${point.y}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear' as const,
+                min: -0.5,
+                max: totalBars - 0.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: (value: any) => {
+                        // Map index back to broker name
+                        const index = Math.round(value);
+                        return barChartBrokers[index]?.broker || '';
+                    },
+                    color: '#94a3b8',
+                    autoSkip: false, // Ensure all labels are shown if possible
+                    maxRotation: 90,
+                    minRotation: 90
+                },
+                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            y: {
+                title: { display: true, text: 'Price', color: '#94a3b8' },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' },
                 ticks: { color: '#94a3b8' }
             }
         }
     };
 
+    const scatterChartData = {
+        datasets: [
+            {
+                label: 'Buy',
+                data: scatterPoints.filter((p: any) => p.type === 'buy'),
+                backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                borderColor: 'rgba(239, 68, 68, 1)',
+            },
+            {
+                label: 'Sell',
+                data: scatterPoints.filter((p: any) => p.type === 'sell'),
+                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                borderColor: 'rgba(16, 185, 129, 1)',
+            }
+        ]
+    };
+
+    // Calculate width for scatter chart to ensure labels are readable
+    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const scatterChartWidth = Math.max(windowWidth - 40, totalBars * 40);
+
     return (
         <div className="charts-view">
+            {/* Split Bar Chart */}
             <div className="chart-scroll-container">
-                <div className="chart-wrapper" style={{ width: `${chartWidth}px`, height: '500px' }}>
-                    <Bar options={chartOptions} data={chartData} />
+                <div className="chart-wrapper" style={{ height: `${chartHeight}px`, minWidth: '800px' }}>
+                    <Bar options={barChartOptions} data={finalBarData} />
                 </div>
             </div>
 
+            {/* Broker vs Price Scatter Chart */}
             <div className="chart-scroll-container" style={{ marginTop: '2rem' }}>
-                <div className="chart-wrapper" style={{ width: `${chartWidth}px`, height: '500px' }}>
-                    <Scatter options={scatterOptions} data={scatterData} />
+                <div className="chart-wrapper" style={{ width: `${scatterChartWidth}px`, height: '600px' }}>
+                    <Scatter options={scatterChartOptions} data={scatterChartData} />
                 </div>
             </div>
 
-            <h3 style={{ marginTop: '2rem' }}>Top 40 Buyers</h3>
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Broker</th>
-                            <th>Net Vol</th>
-                            <th>Avg Buy</th>
-                            <th>Avg Sell</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {topBuyers.map((row: any, i: number) => (
-                            <tr key={i}>
-                                <td>{row.broker}</td>
-                                <td style={{ color: '#ef4444' }}>{row.netVol}</td>
-                                <td>{row.avgBuyPrice.toFixed(2)}</td>
-                                <td>{row.avgSellPrice.toFixed(2)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <div className="tables-row" style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
+                <div style={{ flex: 1 }}>
+                    <h3>Top {topN} Buyers</h3>
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Broker</th>
+                                    <th>Net Vol</th>
+                                    <th>Avg Buy</th>
+                                    <th>Avg Sell</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topBuyers.map((row: any, i: number) => (
+                                    <tr key={i}>
+                                        <td>{row.broker}</td>
+                                        <td style={{ color: '#ef4444' }}>{row.netVol}</td>
+                                        <td>{row.avgBuyPrice.toFixed(2)}</td>
+                                        <td>{row.avgSellPrice.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-            <h3 style={{ marginTop: '2rem' }}>Top 40 Sellers</h3>
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Broker</th>
-                            <th>Net Vol</th>
-                            <th>Avg Buy</th>
-                            <th>Avg Sell</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {topSellers.map((row: any, i: number) => (
-                            <tr key={i}>
-                                <td>{row.broker}</td>
-                                <td style={{ color: '#10b981' }}>{row.netVol}</td>
-                                <td>{row.avgBuyPrice.toFixed(2)}</td>
-                                <td>{row.avgSellPrice.toFixed(2)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <div style={{ flex: 1 }}>
+                    <h3>Top {topN} Sellers</h3>
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Broker</th>
+                                    <th>Net Vol</th>
+                                    <th>Avg Buy</th>
+                                    <th>Avg Sell</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topSellers.map((row: any, i: number) => (
+                                    <tr key={i}>
+                                        <td>{row.broker}</td>
+                                        <td style={{ color: '#10b981' }}>{row.netVol}</td>
+                                        <td>{row.avgBuyPrice.toFixed(2)}</td>
+                                        <td>{row.avgSellPrice.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     );
