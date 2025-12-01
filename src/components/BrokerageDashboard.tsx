@@ -272,18 +272,25 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
 
 const BrokerageCharts = ({ data }: { data: any }) => {
     const topBuyers = useMemo(() => {
-        return [...data.summary].sort((a: any, b: any) => b.netVol - a.netVol).slice(0, 15);
+        return [...data.summary].sort((a: any, b: any) => b.netVol - a.netVol).slice(0, 40);
     }, [data]);
 
     const topSellers = useMemo(() => {
-        return [...data.summary].sort((a: any, b: any) => a.netVol - b.netVol).slice(0, 15);
+        return [...data.summary].sort((a: any, b: any) => a.netVol - b.netVol).slice(0, 40);
     }, [data]);
+
+    // Calculate dynamic width based on number of bars
+    // 80 bars (40 buy + 40 sell) * 30px per bar = 2400px minimum
+    const totalBars = topBuyers.length + topSellers.length;
+    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const chartWidth = Math.max(windowWidth - 40, totalBars * 25);
 
     const chartOptions = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: 'Top 15 Brokers Net Buy/Sell' },
+            title: { display: true, text: 'Top 40 Brokers Net Buy/Sell' },
         },
         scales: {
             y: {
@@ -312,15 +319,22 @@ const BrokerageCharts = ({ data }: { data: any }) => {
     };
 
     // Scatter Plot Data
+    // We want to show points for the top brokers we selected
+    const relevantBrokers = new Set([...topBuyers, ...topSellers].map(b => b.broker));
+
+    const scatterPoints = data.summary
+        .filter((b: any) => relevantBrokers.has(b.broker))
+        .map((b: any) => ({
+            x: b.netVol,
+            y: (b.netVol > 0 ? b.avgBuyPrice : b.avgSellPrice) || 0,
+            broker: b.broker
+        }));
+
     const scatterData = {
         datasets: [
             {
                 label: 'Brokerage Points',
-                data: data.summary.map((b: any) => ({
-                    x: b.netVol,
-                    y: (b.netVol > 0 ? b.avgBuyPrice : b.avgSellPrice) || 0,
-                    broker: b.broker // Custom property
-                })).filter((p: any) => Math.abs(p.x) > 10), // Filter out small noise
+                data: scatterPoints,
                 backgroundColor: (context: any) => {
                     const val = context.raw?.x;
                     return val > 0 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(16, 185, 129, 0.6)';
@@ -331,6 +345,7 @@ const BrokerageCharts = ({ data }: { data: any }) => {
 
     const scatterOptions = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
             title: { display: true, text: 'Brokerage Points (Price vs Net Volume)' },
@@ -359,14 +374,19 @@ const BrokerageCharts = ({ data }: { data: any }) => {
 
     return (
         <div className="charts-view">
-            <div className="chart-container">
-                <Bar options={chartOptions} data={chartData} />
-            </div>
-            <div className="chart-container" style={{ marginTop: '2rem' }}>
-                <Scatter options={scatterOptions} data={scatterData} />
+            <div className="chart-scroll-container">
+                <div className="chart-wrapper" style={{ width: `${chartWidth}px`, height: '500px' }}>
+                    <Bar options={chartOptions} data={chartData} />
+                </div>
             </div>
 
-            <h3 style={{ marginTop: '2rem' }}>Top 15 Buyers</h3>
+            <div className="chart-scroll-container" style={{ marginTop: '2rem' }}>
+                <div className="chart-wrapper" style={{ width: `${chartWidth}px`, height: '500px' }}>
+                    <Scatter options={scatterOptions} data={scatterData} />
+                </div>
+            </div>
+
+            <h3 style={{ marginTop: '2rem' }}>Top 40 Buyers</h3>
             <div className="table-container">
                 <table>
                     <thead>
@@ -390,7 +410,7 @@ const BrokerageCharts = ({ data }: { data: any }) => {
                 </table>
             </div>
 
-            <h3 style={{ marginTop: '2rem' }}>Top 15 Sellers</h3>
+            <h3 style={{ marginTop: '2rem' }}>Top 40 Sellers</h3>
             <div className="table-container">
                 <table>
                     <thead>

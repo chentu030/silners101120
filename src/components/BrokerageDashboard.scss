@@ -126,6 +126,40 @@
             font-size: 1.2rem;
         }
 
+        .chart-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+
+            /* Custom Scrollbar */
+            &::-webkit-scrollbar {
+                height: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 4px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+
+                &:hover {
+                    background: rgba(255, 255, 255, 0.3);
+                }
+            }
+
+            .chart-wrapper {
+                position: relative;
+                /* Width is set dynamically in inline styles */
+            }
+        }
+
         .table-container {
             overflow-x: auto;
 
