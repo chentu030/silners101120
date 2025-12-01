@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Calendar, BarChart2, List, Activity } from 'lucide-react';
 import JSZip from 'jszip';
-// import Papa from 'papaparse';
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
     BarElement,
+    PointElement,
     Title,
     Tooltip,
     Legend,
-    PointElement,
+    BubbleController
 } from 'chart.js';
-import { Bar, Scatter } from 'react-chartjs-2';
+import { Bar, Bubble } from 'react-chartjs-2';
 import './BrokerageDashboard.scss';
 
 ChartJS.register(
@@ -22,7 +22,8 @@ ChartJS.register(
     PointElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    BubbleController
 );
 
 interface BrokerageDashboardProps {
@@ -283,35 +284,28 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
 const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
     const { topBuyers, topSellers } = useMemo(() => {
         const sorted = [...data.summary].sort((a: any, b: any) => b.netVol - a.netVol);
-        // Top Buyers are at the beginning (positive netVol)
-        // Top Sellers are at the end (negative netVol)
 
         const buyers = sorted.filter((b: any) => b.netVol > 0).slice(0, topN);
-        const sellers = sorted.filter((b: any) => b.netVol < 0).reverse().slice(0, topN); // Reverse to get largest negative first
+        const sellers = sorted.filter((b: any) => b.netVol < 0).reverse().slice(0, topN);
 
         return { topBuyers: buyers, topSellers: sellers };
     }, [data, topN]);
 
-    // --- Split Bar Chart Logic ---
-    const barChartBrokers = [...topBuyers, ...topSellers];
-
-    // Calculate dynamic height based on number of bars
-    const totalBars = barChartBrokers.length;
-    // For horizontal bar chart, we need height, not width
-    const chartHeight = Math.max(500, totalBars * 30);
+    // --- Butterfly Bar Chart Logic ---
+    const maxLength = Math.max(topBuyers.length, topSellers.length);
+    const chartHeight = Math.max(500, maxLength * 30);
 
     const barChartOptions = {
-        indexAxis: 'y' as const, // Horizontal bar chart
+        indexAxis: 'y' as const,
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: `Top ${topN} Brokers Net Buy/Sell` },
+            title: { display: true, text: `Top ${topN} Brokers Net Buy vs Net Sell` },
             tooltip: {
                 callbacks: {
                     label: (context: any) => {
                         const val = context.raw;
-                        // Show absolute value in tooltip
                         return `${context.dataset.label}: ${Math.abs(val)} vol`;
                     }
                 }
@@ -319,110 +313,121 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
         },
         scales: {
             x: {
+                stacked: true, // Enable stacking to align bars
                 grid: { color: 'rgba(255, 255, 255, 0.1)' },
                 ticks: {
                     color: '#94a3b8',
-                    callback: (value: any) => Math.abs(value) // Show absolute values on axis
+                    callback: (value: any) => Math.abs(value)
                 }
             },
             y: {
+                stacked: true, // Enable stacking
+                position: 'left' as const,
                 grid: { display: false },
-                ticks: { color: '#94a3b8' }
+                ticks: { color: '#ef4444' }
+            },
+            y1: {
+                stacked: true, // Enable stacking
+                position: 'right' as const,
+                grid: { display: false },
+                ticks: {
+                    color: '#10b981',
+                    callback: (_value: any, index: number) => {
+                        return topSellers[index]?.broker || '';
+                    }
+                }
             }
         }
     };
 
-    const buyData = barChartBrokers.map((b: any) => b.netVol > 0 ? -b.netVol : 0);
-    const sellData = barChartBrokers.map((b: any) => b.netVol < 0 ? -b.netVol : 0);
-
     const finalBarData = {
-        labels: barChartBrokers.map((b: any) => b.broker),
+        labels: topBuyers.map((b: any) => b.broker),
         datasets: [
             {
-                label: 'Net Buy (Left)',
-                data: buyData,
+                label: 'Net Buy',
+                data: topBuyers.map((b: any) => -b.netVol),
                 backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                yAxisID: 'y',
             },
             {
-                label: 'Net Sell (Right)',
-                data: sellData,
+                label: 'Net Sell',
+                data: topSellers.map((b: any) => Math.abs(b.netVol)),
                 backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                yAxisID: 'y', // Use same axis ID for stacking context, but y1 for labels is handled by options
             }
         ]
     };
 
 
-    // --- Broker vs Price Scatter Chart Logic ---
-    const relevantBrokersSet = new Set(barChartBrokers.map(b => b.broker));
+    // --- Broker vs Price Bubble Chart Logic ---
+    const allRelevantBrokers = [...topBuyers, ...topSellers].map(b => b.broker);
+    const relevantBrokersSet = new Set(allRelevantBrokers);
 
-    // We need to map broker names to indices for the X-axis
-    const brokerToIndex = new Map(barChartBrokers.map((b, i) => [b.broker, i]));
+    let maxVol = 0;
 
-    const scatterPoints = data.details
+    const bubblePoints = data.details
         .filter((row: any) => relevantBrokersSet.has(row.broker))
         .map((row: any) => {
-            const brokerIndex = brokerToIndex.get(row.broker);
-            if (brokerIndex === undefined) return null;
-
             const points = [];
             if (row.buyVol > 0) {
+                maxVol = Math.max(maxVol, row.buyVol);
                 points.push({
-                    x: brokerIndex,
+                    x: row.broker,
                     y: row.price,
-                    r: Math.sqrt(row.buyVol) * 2, // Bubble size
+                    _vol: row.buyVol, // Store raw volume for tooltip
+                    r: 0, // Will be calculated later
                     type: 'buy',
-                    vol: row.buyVol,
                     broker: row.broker
                 });
             }
             if (row.sellVol > 0) {
+                maxVol = Math.max(maxVol, row.sellVol);
                 points.push({
-                    x: brokerIndex,
+                    x: row.broker,
                     y: row.price,
-                    r: Math.sqrt(row.sellVol) * 2, // Bubble size
+                    _vol: row.sellVol,
+                    r: 0,
                     type: 'sell',
-                    vol: row.sellVol,
                     broker: row.broker
                 });
             }
             return points;
         })
-        .flat()
-        .filter(Boolean);
+        .flat();
 
-    const scatterChartOptions = {
+    // Normalize bubble size: (vol / maxVol) * 30 + 5 (Max 35px, Min 5px)
+    const normalizeSize = (vol: number) => (vol / (maxVol || 1)) * 30 + 5;
+
+    const bubbleChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: `Top ${topN} Brokers Transaction Details (Price vs Broker)` },
+            title: { display: true, text: `Top ${topN} Brokers Transaction Details` },
             tooltip: {
                 callbacks: {
                     label: (context: any) => {
                         const point = context.raw;
-                        return `${point.broker} (${point.type}): ${point.vol} vol @ $${point.y}`;
+                        return `${point.broker} (${point.type}): ${point._vol} vol @ $${point.y}`;
                     }
                 }
             }
         },
         scales: {
             x: {
-                type: 'linear' as const,
-                min: -0.5,
-                max: totalBars - 0.5,
+                type: 'category' as const,
+                labels: allRelevantBrokers,
+                offset: false, // Align points ON the grid line/tick
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)',
+                    offset: false // Grid lines align with ticks
+                },
                 ticks: {
-                    stepSize: 1,
-                    callback: (value: any) => {
-                        // Map index back to broker name
-                        const index = Math.round(value);
-                        return barChartBrokers[index]?.broker || '';
-                    },
                     color: '#94a3b8',
-                    autoSkip: false, // Ensure all labels are shown if possible
+                    autoSkip: false,
                     maxRotation: 90,
                     minRotation: 90
-                },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
             },
             y: {
                 title: { display: true, text: 'Price', color: '#94a3b8' },
@@ -432,26 +437,30 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
         }
     };
 
-    const scatterChartData = {
+    const bubbleChartData = {
         datasets: [
             {
                 label: 'Buy',
-                data: scatterPoints.filter((p: any) => p.type === 'buy'),
+                data: bubblePoints.filter((p: any) => p.type === 'buy').map((p: any) => ({
+                    ...p,
+                    r: normalizeSize(p._vol)
+                })),
                 backgroundColor: 'rgba(239, 68, 68, 0.6)',
                 borderColor: 'rgba(239, 68, 68, 1)',
             },
             {
                 label: 'Sell',
-                data: scatterPoints.filter((p: any) => p.type === 'sell'),
+                data: bubblePoints.filter((p: any) => p.type === 'sell').map((p: any) => ({
+                    ...p,
+                    r: normalizeSize(p._vol)
+                })),
                 backgroundColor: 'rgba(16, 185, 129, 0.6)',
                 borderColor: 'rgba(16, 185, 129, 1)',
             }
         ]
     };
 
-    // Calculate width for scatter chart to ensure labels are readable
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const scatterChartWidth = Math.max(windowWidth - 40, totalBars * 40);
+    const scatterChartWidth = Math.max(typeof window !== 'undefined' ? window.innerWidth - 40 : 1024, allRelevantBrokers.length * 40);
 
     return (
         <div className="charts-view">
@@ -462,10 +471,10 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
                 </div>
             </div>
 
-            {/* Broker vs Price Scatter Chart */}
+            {/* Broker vs Price Bubble Chart */}
             <div className="chart-scroll-container" style={{ marginTop: '2rem' }}>
                 <div className="chart-wrapper" style={{ width: `${scatterChartWidth}px`, height: '600px' }}>
-                    <Scatter options={scatterChartOptions} data={scatterChartData} />
+                    <Bubble options={bubbleChartOptions} data={bubbleChartData} />
                 </div>
             </div>
 
