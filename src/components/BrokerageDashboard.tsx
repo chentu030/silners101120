@@ -591,6 +591,21 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
         };
     }, [topActive, data]);
 
+    const activityPieOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        rotation: -90,
+        circumference: 180,
+        plugins: {
+            legend: { position: 'top' as const },
+            tooltip: {
+                callbacks: {
+                    label: (context: any) => `${context.label}: ${context.raw} vol`
+                }
+            }
+        }
+    };
+
     // --- New Chart 8: Buy Share (Treemap) ---
     // Using Chart component with type='treemap'
     const buyTreemapData = useMemo(() => {
@@ -633,6 +648,23 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
             }]
         };
     }, [data]);
+
+    const treemapOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            title: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: (context: any) => {
+                        const item = context.raw;
+                        return `${item.g}: ${Math.round(item.v)} vol`;
+                    }
+                }
+            }
+        }
+    };
 
     // --- New Chart 10: Buy/Sell Intensity Amount Range Analysis ---
     const getTierAnalysisData = (excludeBrokers: string[] = []) => {
@@ -773,86 +805,94 @@ const BrokerageCharts = ({ data, topN }: { data: any, topN: number }) => {
 
 
 
-    const scatterChartWidth = Math.max(typeof window !== 'undefined' ? window.innerWidth - 40 : 1024, topActive.length * 40);
+    // const scatterChartWidth = Math.max(typeof window !== 'undefined' ? window.innerWidth - 40 : 1024, topActive.length * 40);
 
     return (
         <div className="charts-view">
             <div className="chart-scroll-container">
-                <div className="chart-wrapper" style={{ height: `${chartHeight}px`, minWidth: '800px' }}>
+                <div className="chart-wrapper" style={{ height: `${chartHeight}px`, width: '100%' }}>
                     <Bar options={barChartOptions} data={finalBarData} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
                     <Bar options={priceHistOptions} data={priceHistChartData as any} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ width: `${Math.max(typeof window !== 'undefined' ? window.innerWidth - 40 : 1024, (topBuyers.length + topSellers.length) * 40)}px`, height: '600px' }}>
+                <div className="chart-wrapper" style={{ width: '100%', height: '600px' }}>
                     <Bubble options={netBubbleOptions} data={netBubbleData as any} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
                     <Bar options={activeHistOptions} data={activeHistChartData as any} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ width: `${scatterChartWidth}px`, height: '600px' }}>
+                <div className="chart-wrapper" style={{ width: '100%', height: '600px' }}>
                     <Bubble options={activeBubbleOptions} data={activeBubbleData as any} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem', display: 'flex', gap: '20px' }}>
-                <div className="chart-wrapper" style={{ flex: 1, height: '400px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Buy Concentration</h4>
-                    <Pie data={concentrationDataBuy} />
+                <div style={{ flex: 1, minWidth: '300px' }}>
+                    <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Buy Concentration</h4>
+                    <div className="chart-wrapper" style={{ height: '400px', width: '100%' }}>
+                        <Pie data={concentrationDataBuy} />
+                    </div>
                 </div>
-                <div className="chart-wrapper" style={{ flex: 1, height: '400px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Sell Concentration</h4>
-                    <Pie data={concentrationDataSell} />
-                </div>
-            </div>
-
-            <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Market Activity Distribution</h4>
-                    <Pie data={activityPieData} />
+                <div style={{ flex: 1, minWidth: '300px' }}>
+                    <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Sell Concentration</h4>
+                    <div className="chart-wrapper" style={{ height: '400px', width: '100%' }}>
+                        <Pie data={concentrationDataSell} />
+                    </div>
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Buy Share (Treemap)</h4>
-                    <Chart type='treemap' data={buyTreemapData as any} />
+                <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Market Activity Distribution</h4>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
+                    <Pie data={activityPieData} options={activityPieOptions} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Sell Share (Treemap)</h4>
-                    <Chart type='treemap' data={sellTreemapData as any} />
+                <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Buy Share (Treemap)</h4>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
+                    <Chart type='treemap' data={buyTreemapData as any} options={treemapOptions} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
-                <div className="chart-wrapper" style={{ height: '500px', minWidth: '800px' }}>
+                <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Sell Share (Treemap)</h4>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
+                    <Chart type='treemap' data={sellTreemapData as any} options={treemapOptions} />
+                </div>
+            </div>
+
+            <div className="chart-scroll-container" style={{ marginTop: '3rem' }}>
+                <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
                     <Bar options={costBattleOptions} data={costBattleData} />
                 </div>
             </div>
 
             <div className="chart-scroll-container" style={{ marginTop: '3rem', display: 'flex', gap: '20px' }}>
-                <div className="chart-wrapper" style={{ flex: 1, height: '500px', minWidth: '600px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>All Brokers</h4>
-                    <Bar options={{ ...tierAnalysisOptions, plugins: { ...tierAnalysisOptions.plugins, title: { display: true, text: 'All Brokers' } } }} data={tierAnalysisDataAll as any} />
+                <div style={{ flex: 1, minWidth: '300px' }}>
+                    <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>All Brokers</h4>
+                    <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
+                        <Bar options={{ ...tierAnalysisOptions, plugins: { ...tierAnalysisOptions.plugins, title: { display: true, text: 'All Brokers' } } }} data={tierAnalysisDataAll as any} />
+                    </div>
                 </div>
-                <div className="chart-wrapper" style={{ flex: 1, height: '500px', minWidth: '600px' }}>
-                    <h4 style={{ textAlign: 'center', color: '#fff' }}>Excluding Top 20 Active Brokers</h4>
-                    <Bar options={{ ...tierAnalysisOptions, plugins: { ...tierAnalysisOptions.plugins, title: { display: true, text: 'Excluding Top 20 Active' } } }} data={tierAnalysisDataExcluding as any} />
+                <div style={{ flex: 1, minWidth: '300px' }}>
+                    <h4 style={{ textAlign: 'center', color: 'var(--text-primary)', marginBottom: '1rem' }}>Excluding Top 20 Active Brokers</h4>
+                    <div className="chart-wrapper" style={{ height: '500px', width: '100%' }}>
+                        <Bar options={{ ...tierAnalysisOptions, plugins: { ...tierAnalysisOptions.plugins, title: { display: true, text: 'Excluding Top 20 Active' } } }} data={tierAnalysisDataExcluding as any} />
+                    </div>
                 </div>
             </div>
         </div>
@@ -895,321 +935,20 @@ const BrokerageQuery = ({ data }: { data: any }) => (
     </div>
 );
 
-const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _basePath = '' }) => {
-    console.log('BrokerageDashboard v0.0.3 loaded');
-    const [dates, setDates] = useState<string[]>([]);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [stockCode, setStockCode] = useState('');
+interface BrokerageDashboardProps {
+    basePath?: string;
+    data: any;
+    loading: boolean;
+    error: string;
+    topN: number;
+}
+
+const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _basePath = '', data, loading, error, topN }) => {
+    console.log('BrokerageDashboard v0.0.4 loaded');
     const [activeTab, setActiveTab] = useState<'charts' | 'scan' | 'query'>('charts');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [data, setData] = useState<any>(null);
-    const [topN, setTopN] = useState(15);
-    const [zipCache, setZipCache] = useState<Map<string, JSZip>>(new Map());
-    const [isControlsExpanded, setIsControlsExpanded] = useState(false);
-
-    useEffect(() => {
-        fetch(`${import.meta.env.BASE_URL}data/chips/dates.json`)
-            .then(res => res.json())
-            .then(data => {
-                const sortedDates = data.sort((a: string, b: string) => b.localeCompare(a));
-                setDates(sortedDates);
-                if (sortedDates.length > 0) {
-                    setStartDate(sortedDates[0]);
-                    setEndDate(sortedDates[0]);
-                }
-            })
-            .catch(err => console.error('Failed to load dates:', err));
-    }, []);
-
-    const parseDoubleColumnCSV = (text: string) => {
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        const rows: any[] = [];
-
-        // Skip header (first line)
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            const parts = line.split(',');
-
-            // Left column (0-4)
-            if (parts.length >= 5) {
-                const broker = parts[1]?.trim();
-                if (broker) {
-                    rows.push({
-                        broker: broker,
-                        price: parseFloat(parts[2]),
-                        buyVol: parseInt(parts[3]) || 0,
-                        sellVol: parseInt(parts[4]) || 0
-                    });
-                }
-            }
-
-            // Right column (6-10)
-            if (parts.length >= 11) {
-                const broker = parts[7]?.trim();
-                if (broker) {
-                    rows.push({
-                        broker: broker,
-                        price: parseFloat(parts[8]),
-                        buyVol: parseInt(parts[9]) || 0,
-                        sellVol: parseInt(parts[10]) || 0
-                    });
-                }
-            }
-        }
-        return rows;
-    };
-
-    const processStockData = (rawRows: any[]) => {
-        const brokerMap = new Map<string, BrokerSummary>();
-
-        rawRows.forEach(row => {
-            if (!brokerMap.has(row.broker)) {
-                brokerMap.set(row.broker, {
-                    broker: row.broker,
-                    buyVol: 0,
-                    sellVol: 0,
-                    buyAmt: 0,
-                    sellAmt: 0,
-                    netVol: 0,
-                    netAmt: 0,
-                    avgBuyPrice: 0,
-                    avgSellPrice: 0
-                });
-            }
-
-            const b = brokerMap.get(row.broker)!;
-            b.buyVol += row.buyVol;
-            b.sellVol += row.sellVol;
-            b.buyAmt += row.buyVol * row.price;
-            b.sellAmt += row.sellVol * row.price;
-        });
-
-        const summary = Array.from(brokerMap.values()).map(b => {
-            b.netVol = b.buyVol - b.sellVol;
-            b.netAmt = b.buyAmt - b.sellAmt;
-            b.avgBuyPrice = b.buyVol > 0 ? b.buyAmt / b.buyVol : 0;
-            b.avgSellPrice = b.sellVol > 0 ? b.sellAmt / b.sellVol : 0;
-            return b;
-        });
-
-        summary.sort((a, b) => b.netVol - a.netVol);
-
-        return {
-            details: rawRows,
-            summary: summary
-        };
-    };
-
-    const handleSearch = async () => {
-        if (!stockCode || !startDate || !endDate) return;
-        setLoading(true);
-        setError('');
-        setData(null);
-
-        try {
-            // dates array is sorted descending (newest first)
-            const targetDates = dates.filter(d => d >= startDate && d <= endDate);
-
-            if (targetDates.length === 0) {
-                throw new Error('No valid dates found in range');
-            }
-
-            console.log(`Fetching data for ${targetDates.length} days...`);
-
-            const allRows: any[] = [];
-
-            await Promise.all(targetDates.map(async (date) => {
-                try {
-                    let zip = zipCache.get(date);
-
-                    if (!zip) {
-                        const response = await fetch(`${import.meta.env.BASE_URL}data/chips/${date}.zip`);
-                        if (!response.ok) return;
-                        const blob = await response.blob();
-                        zip = await JSZip.loadAsync(blob);
-                        setZipCache(prev => new Map(prev).set(date, zip!));
-                    }
-
-                    const fileName = `${date}/${stockCode}.csv`;
-                    const file = zip.file(fileName);
-
-                    if (!file) return;
-
-                    const uint8Array = await file.async('uint8array');
-                    let decodedText = '';
-                    try {
-                        const decoder = new TextDecoder('big5');
-                        decodedText = decoder.decode(uint8Array);
-                    } catch (e) {
-                        const decoder = new TextDecoder('utf-8');
-                        decodedText = decoder.decode(uint8Array);
-                    }
-
-                    const dayRows = parseDoubleColumnCSV(decodedText);
-                    allRows.push(...dayRows);
-
-                } catch (err) {
-                    console.warn(`Failed to process ${date}:`, err);
-                }
-            }));
-
-            if (allRows.length === 0) {
-                throw new Error(`Stock ${stockCode} not found in selected range`);
-            }
-
-            const processedData = processStockData(allRows);
-            setData(processedData);
-
-        } catch (err: any) {
-            setError(err.message || 'Error loading data');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        setLoading(true);
-        setError('');
-        setData(null);
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const content = e.target?.result;
-                if (typeof content === 'string') {
-                    const rows = parseDoubleColumnCSV(content);
-                    if (rows.length === 0) {
-                        throw new Error('No valid data found in CSV');
-                    }
-                    const processedData = processStockData(rows);
-                    setData(processedData);
-                    setStockCode(file.name.replace('.csv', '')); // Set stock code from filename
-                }
-            } catch (err: any) {
-                setError('Failed to parse CSV: ' + err.message);
-            } finally {
-                setLoading(false);
-                // Reset file input
-                event.target.value = '';
-            }
-        };
-
-        // Try reading as Big5 first (common for Taiwan stock data)
-        // If it looks like UTF-8, FileReader usually handles it, but explicit TextDecoder is better.
-        // Here we rely on FileReader's default or we can use readAsArrayBuffer and TextDecoder like in handleSearch.
-        // For simplicity, let's use readAsArrayBuffer and decode manually to match handleSearch logic.
-        reader.readAsArrayBuffer(file);
-        reader.onload = (e) => {
-            try {
-                const buffer = e.target?.result as ArrayBuffer;
-                let decodedText = '';
-                try {
-                    const decoder = new TextDecoder('big5');
-                    decodedText = decoder.decode(buffer);
-                } catch (e) {
-                    const decoder = new TextDecoder('utf-8');
-                    decodedText = decoder.decode(buffer);
-                }
-
-                const rows = parseDoubleColumnCSV(decodedText);
-                if (rows.length === 0) {
-                    throw new Error('No valid data found in CSV');
-                }
-                const processedData = processStockData(rows);
-                setData(processedData);
-                setStockCode(file.name.replace('.csv', ''));
-            } catch (err: any) {
-                setError('Failed to parse CSV: ' + err.message);
-            } finally {
-                setLoading(false);
-                event.target.value = '';
-            }
-        };
-    };
 
     return (
         <div className="brokerage-dashboard">
-            <div className="controls-bar">
-                <div
-                    className="filter-toggle-bar"
-                    onClick={() => setIsControlsExpanded(!isControlsExpanded)}
-                >
-                    <span>Show Filters</span>
-                    {isControlsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
-
-                <div className={`controls-content ${isControlsExpanded ? 'expanded' : ''}`}>
-                    <div className="control-group">
-                        <label><Calendar size={16} /> Start</label>
-                        <select value={startDate} onChange={e => setStartDate(e.target.value)}>
-                            {dates.map(d => (
-                                <option key={d} value={d}>{d}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="control-group">
-                        <label><Calendar size={16} /> End</label>
-                        <select value={endDate} onChange={e => setEndDate(e.target.value)}>
-                            {dates.map(d => (
-                                <option key={d} value={d}>{d}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="control-group">
-                        <label><Search size={16} /> Stock</label>
-                        <input
-                            type="text"
-                            value={stockCode}
-                            onChange={e => setStockCode(e.target.value)}
-                            placeholder="e.g. 2330"
-                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        />
-                    </div>
-                    <div className="control-group">
-                        <label>Top N</label>
-                        <input
-                            type="number"
-                            value={topN}
-                            onChange={e => setTopN(Math.max(1, parseInt(e.target.value) || 1))}
-                            style={{ width: '80px' }}
-                        />
-                    </div>
-                    <button className="search-btn" onClick={handleSearch} disabled={loading}>
-                        {loading ? 'Loading...' : 'Search'}
-                    </button>
-
-                    <div className="divider" style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 1rem' }}></div>
-
-                    <label className="upload-btn" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        color: '#3b82f6',
-                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}>
-                        <Upload size={16} />
-                        <span>Upload CSV</span>
-                        <input
-                            type="file"
-                            accept=".csv"
-                            onChange={handleFileUpload}
-                            style={{ display: 'none' }}
-                        />
-                    </label>
-                </div>
-            </div>
-
             <div className="sub-tabs">
                 <button
                     className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`}
@@ -1233,6 +972,8 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
 
             <div className="content-area">
                 {error && <div className="error-msg">{error}</div>}
+
+                {loading && <div className="loading-state">Loading data...</div>}
 
                 {!data && !loading && !error && (
                     <div className="empty-state">Please select a date range and enter a stock code to start analysis.</div>

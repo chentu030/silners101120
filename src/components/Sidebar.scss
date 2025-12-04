@@ -1,21 +1,19 @@
 ﻿.sidebar {
-    width: 260px; // Reduced from 280px
-    height: 100vh;
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 1.5rem 1rem; // Reduced padding
+    padding: 1.5rem 1rem;
     z-index: 50;
-    transition: width 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
     overflow: hidden;
+    transition: padding 0.3s ease;
+
+    // In grid layout, the width is determined by the grid column,
+    // but we need to ensure the content behaves correctly.
 
     &.collapsed {
-        width: 70px; // Reduced from 80px
         padding: 1.5rem 0.5rem;
 
         .sidebar-logo {
@@ -36,7 +34,8 @@
             justify-content: center;
             padding: 0.75rem 0;
 
-            .label {
+            .label,
+            .submenu-arrow {
                 display: none;
             }
         }
@@ -44,14 +43,14 @@
 
     .collapse-toggle {
         position: absolute;
-        right: -10px;
+        right: -12px;
         top: 2.5rem;
-        width: 20px;
-        height: 20px;
-        background: var(--accent-color);
+        width: 24px;
+        height: 24px;
+        background: var(--bg-secondary);
         border: 1px solid var(--border-color);
         border-radius: 50%;
-        color: var(--bg-primary);
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -61,6 +60,7 @@
         transition: all 0.2s;
 
         &:hover {
+            color: var(--text-primary);
             transform: scale(1.1);
         }
     }
@@ -78,6 +78,7 @@
             gap: 0.75rem;
             cursor: pointer;
             transition: all 0.3s ease;
+            width: 100%;
 
             .logo-icon {
                 flex-shrink: 0;
@@ -94,6 +95,10 @@
                 letter-spacing: -0.02em;
                 font-family: 'Playfair Display', serif;
 
+                @at-root [data-theme='light'] & {
+                    color: #000000;
+                }
+
                 span {
                     color: var(--text-secondary);
                 }
@@ -104,7 +109,7 @@
     .sidebar-nav {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem; // Reduced gap
+        gap: 0.25rem;
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
@@ -143,409 +148,240 @@
             padding: 0.75rem;
             background: transparent;
             border: none;
-            border-radius: 6px; // Sharper radius
+            border-radius: 6px;
             color: var(--text-secondary);
             font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            width: 100%;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            font-family: 'Lora', serif;
 
-            .sidebar {
-                width: 260px; // Reduced from 280px
-                height: 100vh;
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                background: var(--bg-secondary);
-                border-right: 1px solid var(--border-color);
-                display: flex;
-                flex-direction: column;
-                padding: 1.5rem 1rem; // Reduced padding
-                z-index: 50;
-                transition: width 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-                overflow: hidden;
+            @at-root [data-theme='light'] & {
+                color: #334155; // Darker gray for inactive items
+            }
 
-                &.collapsed {
-                    width: 70px; // Reduced from 80px
-                    padding: 1.5rem 0.5rem;
+            &:hover {
+                color: var(--text-primary);
+                background: var(--bg-tertiary);
 
-                    .sidebar-logo {
-                        .logo-container {
-                            justify-content: center;
+                @at-root [data-theme='light'] & {
+                    color: #000000;
+                }
+            }
 
-                            .logo-icon {
-                                transform: scale(1.1);
-                            }
+            &.active {
+                color: var(--text-primary);
+                background: var(--bg-tertiary);
+                font-weight: 600;
 
-                            .logo-text {
-                                display: none;
-                            }
-                        }
-                    }
-
-                    .nav-item {
-                        justify-content: center;
-                        padding: 0.75rem 0;
-
-                        .label {
-                            display: none;
-                        }
-                    }
+                @at-root [data-theme='light'] & {
+                    color: #000000;
                 }
 
-                .collapse-toggle {
+                .active-indicator {
                     position: absolute;
-                    right: -10px;
-                    top: 2.5rem;
-                    width: 20px;
-                    height: 20px;
-                    background: var(--accent-color);
-                    border: 1px solid var(--border-color);
-                    border-radius: 50%;
-                    color: var(--bg-primary);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    z-index: 60;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                    transition: all 0.2s;
-
-                    &:hover {
-                        transform: scale(1.1);
-                    }
-                }
-
-                .sidebar-logo {
-                    margin-bottom: 2rem;
-                    padding: 0 0.5rem;
-                    display: flex;
-                    justify-content: center;
-                    flex-shrink: 0;
-
-                    .logo-container {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.75rem;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-
-                        .logo-icon {
-                            flex-shrink: 0;
-                            transition: transform 0.3s ease;
-                            color: var(--text-primary);
-                        }
-
-                        .logo-text {
-                            font-size: 1.5rem;
-                            font-weight: 700;
-                            color: var(--text-primary);
-                            margin: 0;
-                            white-space: nowrap;
-                            letter-spacing: -0.02em;
-                            font-family: 'Playfair Display', serif;
-
-                            span {
-                                color: var(--text-secondary);
-                            }
-                        }
-                    }
-                }
-
-                .sidebar-nav {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.25rem; // Reduced gap
-                    flex: 1;
-                    overflow-y: auto;
-                    overflow-x: hidden;
-                    margin-right: -0.5rem;
-                    padding-right: 0.5rem;
-
-                    &::-webkit-scrollbar {
-                        width: 4px;
-                    }
-
-                    &::-webkit-scrollbar-track {
-                        background: transparent;
-                    }
-
-                    &::-webkit-scrollbar-thumb {
-                        background: var(--border-color);
-                        border-radius: 4px;
-
-                        &:hover {
-                            background: var(--text-tertiary);
-                        }
-                    }
-
-                    .nav-item-container {
-                        display: flex;
-                        flex-direction: column;
-                        width: 100%;
-                        flex-shrink: 0;
-                    }
-
-                    .nav-item {
-                        position: relative;
-                        display: flex;
-                        align-items: center;
-                        gap: 0.75rem;
-                        padding: 0.75rem;
-                        background: transparent;
-                        border: none;
-                        border-radius: 6px; // Sharper radius
-                        color: var(--text-secondary);
-                        font-size: 0.9rem;
-                        font-weight: 500;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        text-align: left;
-                        width: 100%;
-                        justify-content: flex-start;
-                        flex-shrink: 0;
-                        font-family: 'Lora', serif;
-
-                        &:hover {
-                            color: var(--text-primary);
-                            background: var(--bg-tertiary);
-                        }
-
-                        &.active {
-                            color: var(--sidebar-active-text, var(--text-primary));
-                            background: var(--sidebar-active-bg, var(--bg-tertiary));
-                            font-weight: 600;
-
-                            .active-indicator {
-                                position: absolute;
-                                left: 0;
-                                top: 50%;
-                                transform: translateY(-50%);
-                                width: 3px;
-                                height: 16px;
-                                background: var(--sidebar-active-text, var(--text-primary));
-                                border-radius: 0 2px 2px 0;
-                            }
-                        }
-
-                        .submenu-arrow {
-                            margin-left: auto;
-                            display: flex;
-                            align-items: center;
-                            opacity: 0.7;
-                        }
-                    }
-
-                    .submenu {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 0.1rem;
-                        margin-top: 0.1rem;
-                        padding-left: 1rem;
-                        position: relative;
-
-                        &::before {
-                            content: '';
-                            position: absolute;
-                            left: 1rem;
-                            bottom: 0;
-                            width: 1px;
-                            background: var(--border-color);
-                            display: none;
-                        }
-
-                        .submenu-item {
-                            display: flex;
-                            align-items: center;
-                            gap: 0.5rem;
-                            padding: 0.5rem 0.75rem;
-                            background: transparent;
-                            border: none;
-                            border-radius: 4px;
-                            color: var(--text-secondary);
-                            font-size: 0.85rem;
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                            text-align: left;
-                            width: 100%;
-                            flex-shrink: 0;
-                            font-family: 'Lora', serif;
-
-                            .dot {
-                                width: 3px;
-                                height: 3px;
-                                border-radius: 50%;
-                                background-color: currentColor;
-                                opacity: 0.5;
-                            }
-
-                            &:hover {
-                                color: var(--text-primary);
-                                background: var(--bg-tertiary);
-
-                                .dot {
-                                    opacity: 1;
-                                }
-                            }
-
-                            &.active {
-                                color: var(--sidebar-active-text, var(--text-primary));
-                                background: var(--sidebar-active-bg, var(--bg-tertiary));
-                                font-weight: 600;
-
-                                .dot {
-                                    opacity: 1;
-                                    background-color: var(--sidebar-active-text, var(--text-primary));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                .sidebar-footer {
-                    border-top: 1px solid var(--border-color);
-                    padding-top: 1rem;
-                    flex-shrink: 0;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-
-                    .theme-toggle {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.75rem;
-                        padding: 0.75rem;
-                        background: transparent;
-                        border: none;
-                        border-radius: 6px;
-                        color: var(--text-secondary);
-                        font-size: 0.9rem;
-                        font-weight: 500;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        width: 100%;
-                        font-family: 'Lora', serif;
-
-                        &:hover {
-                            color: var(--text-primary);
-                            background: var(--bg-tertiary);
-                        }
-                    }
-
-                    .nav-item {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.75rem;
-                        padding: 0.75rem;
-                        background: transparent;
-                        border: none;
-                        border-radius: 6px;
-                        color: var(--danger);
-                        font-size: 0.9rem;
-                        font-weight: 500;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        width: 100%;
-                        font-family: 'Lora', serif;
-
-                        &:hover {
-                            background: rgba(239, 68, 68, 0.1);
-                        }
-                    }
-                }
-            }
-
-            @media (max-width: 1024px) {
-                .sidebar {
-                    width: 70px;
-                    padding: 1.5rem 0.5rem;
-
-                    .sidebar-logo {
-                        .logo-container {
-                            justify-content: center;
-
-                            .logo-text {
-                                display: none;
-                            }
-                        }
-                    }
-
-                    .nav-item {
-                        justify-content: center;
-                        padding: 0.75rem 0;
-
-                        .label {
-                            display: none;
-                        }
-                    }
-                }
-            }
-
-            @media (max-width: 768px) {
-                .sidebar {
-                    position: fixed;
                     left: 0;
-                    bottom: 0;
-                    height: 100vh;
-                    z-index: 1000;
-                    width: 260px;
-                    transform: translateX(0);
-                    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-                    overflow: visible !important;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 3px;
+                    height: 16px;
+                    background: var(--text-primary);
+                    border-radius: 0 2px 2px 0;
 
-                    .sidebar-logo {
-                        .logo-container {
-                            .logo-text {
-                                display: block;
-                            }
-                        }
-                    }
-
-                    .nav-item {
-                        justify-content: flex-start;
-                        padding: 0.75rem;
-
-                        .label {
-                            display: block;
-                        }
-                    }
-
-                    &.collapsed {
-                        width: 260px;
-                        transform: translateX(-100%);
-                        padding: 1.5rem 1rem;
-
-                        .sidebar-logo {
-                            .logo-container {
-                                justify-content: flex-start;
-
-                                .logo-text {
-                                    display: block;
-                                }
-                            }
-                        }
-
-                        .nav-item .label {
-                            display: block;
-                        }
-                    }
-
-                    .collapse-toggle {
-                        position: absolute;
-                        right: -28px;
-                        top: 100px;
-                        width: 28px;
-                        height: 40px;
-                        border-radius: 0 6px 6px 0;
-                        background: var(--bg-secondary);
-                        border: 1px solid var(--border-color);
-                        border-left: none;
-                        box-shadow: 4px 0 8px rgba(0, 0, 0, 0.05);
-                        z-index: 9999;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: var(--text-secondary);
+                    @at-root [data-theme='light'] & {
+                        background: #000000;
                     }
                 }
             }
+
+            .submenu-arrow {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                opacity: 0.7;
+            }
+        }
+
+        .submenu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            margin-top: 0.1rem;
+            padding-left: 1rem;
+            position: relative;
+
+            &::before {
+                content: '';
+                position: absolute;
+                left: 1rem;
+                bottom: 0;
+                width: 1px;
+                background: var(--border-color);
+                display: none;
+            }
+
+            .submenu-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 0.75rem;
+                background: transparent;
+                border: none;
+                border-radius: 4px;
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                text-align: left;
+                width: 100%;
+                flex-shrink: 0;
+                font-family: 'Lora', serif;
+
+                .dot {
+                    width: 3px;
+                    height: 3px;
+                    border-radius: 50%;
+                    background-color: currentColor;
+                    opacity: 0.5;
+                }
+
+                &:hover {
+                    color: var(--text-primary);
+                    background: var(--bg-tertiary);
+
+                    .dot {
+                        opacity: 1;
+                    }
+                }
+
+                &.active {
+                    color: var(--text-primary);
+                    background: var(--bg-tertiary);
+                    font-weight: 600;
+
+                    .dot {
+                        opacity: 1;
+                        background-color: var(--text-primary);
+                    }
+                }
+            }
+        }
+    }
+
+    .sidebar-footer {
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-family: 'Lora', serif;
+
+            &:hover {
+                color: var(--text-primary);
+                background: var(--bg-tertiary);
+            }
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--danger);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-family: 'Lora', serif;
+
+            &:hover {
+                background: rgba(239, 68, 68, 0.1);
+            }
+        }
+    }
+}
+
+// Mobile Drawer Styles
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        z-index: 1000;
+        width: 260px;
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.collapsed {
+            transform: translateX(-100%);
+            width: 260px; // Keep width same, just hide it
+            padding: 1.5rem 1rem; // Reset padding
+
+            // Restore visibility of items inside when collapsed (since it's just off-screen)
+            .sidebar-logo .logo-container .logo-text {
+                display: block;
+            }
+
+            .nav-item .label {
+                display: block;
+            }
+
+            .nav-item .submenu-arrow {
+                display: flex;
+            }
+        }
+
+        // Toggle button for mobile
+        .collapse-toggle {
+            position: absolute;
+            right: -32px; // Stick out
+            top: 1rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 0 4px 4px 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            box-shadow: 4px 0 8px rgba(0, 0, 0, 0.1);
+
+            // Ensure it's visible even when sidebar is hidden
+            // Actually, if sidebar is translated -100%, this button moves with it.
+            // We need a way to open it.
+            // In the previous design, the button was attached to the sidebar.
+            // If the sidebar moves off-screen, the button goes with it.
+            // We usually need a separate trigger or keep the button visible.
+
+            // Let's keep it simple: The button sticks out.
+            // When collapsed (translateX -100%), right is -32px, so it should be at left: 0 of screen?
+            // No, if width is 260px, -100% moves it -260px. Right edge is at 0.
+            // So right: -32px means it will be at 32px from left edge of screen. Perfect.
+        }
+    }
+}

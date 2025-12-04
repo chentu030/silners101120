@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, ArrowUp, ArrowDown, LayoutGrid, List, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import './MarketOverview.scss'; // Reuse styles
 
 interface RankingData {
@@ -35,29 +35,42 @@ interface RawStatData {
     [key: string]: any;
 }
 
-const Statistics: React.FC = () => {
-    const [viewMode, setViewMode] = useState<'rankings' | 'all'>('rankings');
-    const [timePeriod, setTimePeriod] = useState<'3y' | '5y'>('3y');
-    const [selectedSheet, setSelectedSheet] = useState<string>('1月');
-    const [selectedCategory, setSelectedCategory] = useState<keyof SheetData>('stocks');
+interface StatisticsProps {
+    filters: {
+        viewMode: 'rankings' | 'all';
+        timePeriod: '3y' | '5y';
+        selectedSheet: string;
+        selectedCategory: keyof SheetData;
+        searchQuery: string;
+        selectedTimeframes: string[];
+    };
+    setFilters: {
+        setViewMode: (mode: 'rankings' | 'all') => void;
+        setTimePeriod: (period: '3y' | '5y') => void;
+        setSelectedSheet: (sheet: string) => void;
+        setSelectedCategory: (category: keyof SheetData) => void;
+        setSearchQuery: (query: string) => void;
+        setSelectedTimeframes: (timeframes: string[]) => void;
+        setAvailableSheets: (sheets: string[]) => void;
+    };
+}
 
+const Statistics: React.FC<StatisticsProps> = ({ filters, setFilters }) => {
+    const { viewMode, timePeriod, selectedSheet, selectedCategory, searchQuery, selectedTimeframes } = filters;
+    const { setViewMode, setTimePeriod, setSelectedSheet, setSelectedCategory, setSearchQuery, setSelectedTimeframes, setAvailableSheets } = setFilters;
     const [rankingsData, setRankingsData] = useState<RankingsMap>({});
     const [rawData, setRawData] = useState<RawStatData[]>([]);
     const [stockInfo, setStockInfo] = useState<StockInfo[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Filter State
-    const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
-    const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
-    const allTimeframes = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', 'Q1', 'Q2', 'Q3', 'Q4'];
-    const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>(['1月']);
+    // Modal State
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalConstituents, setModalConstituents] = useState<StockInfo[]>([]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    // Removed local searchQuery state as it is now passed via props
     const [sortField, setSortField] = useState<string>('');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
@@ -95,8 +108,11 @@ const Statistics: React.FC = () => {
                             .then(res => res.json())
                             .then((data: RankingsMap) => {
                                 setRankingsData(data);
-                                // Reset selected sheet if needed
+                                // Update available sheets in parent
                                 const sheets = Object.keys(data);
+                                setAvailableSheets(sheets);
+
+                                // Reset selected sheet if needed
                                 if (sheets.length > 0 && !sheets.includes(selectedSheet)) {
                                     setSelectedSheet(sheets[0]);
                                 }
@@ -158,7 +174,7 @@ const Statistics: React.FC = () => {
                 if (fixedColumns.includes(key)) return true;
 
                 // Filter out unwanted columns
-                if (key.startsWith('Unnamed') || key === '細產業') return false;
+                if (key.startsWith('Unnamed')) return false;
 
                 // For other columns (stats), check if they match selected timeframes
                 if (viewMode === 'all') {
@@ -170,7 +186,7 @@ const Statistics: React.FC = () => {
             })
             .map(key => ({
                 key,
-                label: key === '細產業列表' ? 'Sub-industries' : (key === '產業' ? 'Industry' : key) // Rename for display
+                label: key === '細產業列表' ? 'Sub-industries' : (key === '產業' ? 'Industry' : (key === '細產業' ? 'Sub-industry' : key)) // Rename for display
             }));
     }, [currentData, viewMode, selectedTimeframes]);
 
@@ -333,197 +349,10 @@ const Statistics: React.FC = () => {
 
     return (
         <div className="market-overview">
-            <div className={`filters-bar ${isFiltersCollapsed ? 'collapsed' : ''}`}>
-                <div className="filters-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: isFiltersCollapsed ? '100%' : 'auto' }}>
-                    <button
-                        className="collapse-btn"
-                        onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#94a3b8',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        {isFiltersCollapsed ? <Filter size={16} /> : <ChevronDown size={16} style={{ transform: 'rotate(180deg)' }} />}
-                    </button>
 
-                    {isFiltersCollapsed && (
-                        <div className="result-count" style={{ marginLeft: 'auto' }}>
-                            Showing {processedData.length} records
-                        </div>
-                    )}
-                </div>
-
-                <div className="filters-content" style={{ display: isFiltersCollapsed ? 'none' : 'contents' }}>
-                    {/* View Mode Toggle */}
-                    <div className="filter-group">
-                        <button
-                            className={`mode-btn ${viewMode === 'rankings' ? 'active' : ''}`}
-                            onClick={() => { setViewMode('rankings'); setCurrentPage(1); }}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                background: viewMode === 'rankings' ? '#3b82f6' : 'rgba(15, 23, 42, 0.6)',
-                                color: 'white',
-                                cursor: 'pointer',
-                                marginRight: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <LayoutGrid size={16} style={{ marginRight: '0.5rem' }} />
-                            Rankings
-                        </button>
-                        <button
-                            className={`mode-btn ${viewMode === 'all' ? 'active' : ''}`}
-                            onClick={() => { setViewMode('all'); setCurrentPage(1); }}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                background: viewMode === 'all' ? '#3b82f6' : 'rgba(15, 23, 42, 0.6)',
-                                color: 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <List size={16} style={{ marginRight: '0.5rem' }} />
-                            All Stocks
-                        </button>
-                    </div>
-
-                    {/* Time Period Filter */}
-                    <div className="filter-group">
-                        <Filter size={18} />
-                        <select
-                            value={timePeriod}
-                            onChange={(e) => { setTimePeriod(e.target.value as any); setCurrentPage(1); }}
-                            className="filter-select"
-                        >
-                            <option value="3y">Last 3 Years</option>
-                            <option value="5y">Last 5 Years</option>
-                        </select>
-                    </div>
-
-                    {/* Sheet Filter (Only for Rankings) */}
-                    {viewMode === 'rankings' && (
-                        <>
-                            <div className="filter-group">
-                                <Filter size={18} />
-                                <select
-                                    value={selectedSheet}
-                                    onChange={(e) => { setSelectedSheet(e.target.value); setCurrentPage(1); }}
-                                    className="filter-select"
-                                >
-                                    {Object.keys(rankingsData).map(sheet => (
-                                        <option key={sheet} value={sheet}>{sheet}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="filter-group">
-                                <Filter size={18} />
-                                <select
-                                    value={selectedCategory}
-                                    onChange={(e) => { setSelectedCategory(e.target.value as any); setCurrentPage(1); }}
-                                    className="filter-select"
-                                >
-                                    {categories.map(cat => (
-                                        <option key={cat.key} value={cat.key}>{cat.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Timeframe Filter (Only for All Stocks) */}
-                    {viewMode === 'all' && (
-                        <div className="filter-group" style={{ position: 'relative' }}>
-                            <button
-                                className="filter-select"
-                                onClick={() => setIsTimeframeDropdownOpen(!isTimeframeDropdownOpen)}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '150px', cursor: 'pointer' }}
-                            >
-                                <span>{selectedTimeframes.length > 0 ? `${selectedTimeframes.length} selected` : 'Select Columns'}</span>
-                                <ChevronDown size={14} />
-                            </button>
-
-                            {isTimeframeDropdownOpen && (
-                                <div className="dropdown-menu" style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    zIndex: 100,
-                                    background: '#1e293b',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    marginTop: '0.5rem',
-                                    minWidth: '200px',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                                }}>
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                        <button
-                                            onClick={() => setSelectedTimeframes(allTimeframes)}
-                                            style={{ fontSize: '12px', padding: '2px 6px', background: '#3b82f6', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
-                                        >
-                                            All
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedTimeframes([])}
-                                            style={{ fontSize: '12px', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                    {allTimeframes.map(tf => (
-                                        <label key={tf} style={{ display: 'flex', alignItems: 'center', padding: '4px 0', cursor: 'pointer', color: 'white' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedTimeframes.includes(tf)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedTimeframes([...selectedTimeframes, tf]);
-                                                    } else {
-                                                        setSelectedTimeframes(selectedTimeframes.filter(t => t !== tf));
-                                                    }
-                                                }}
-                                                style={{ marginRight: '8px' }}
-                                            />
-                                            {tf}
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="filter-group search-group">
-                        <Search size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            value={searchQuery}
-                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            className="search-input"
-                        />
-                    </div>
-                    <div className="result-count">
-                        Showing {processedData.length} records
-                    </div>
-                </div>
+            {/* Filters are now in the header */}
+            <div className="result-count" style={{ padding: '0.5rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                Showing {processedData.length} records
             </div>
 
             <div className="table-container">

@@ -1,6 +1,6 @@
 .hero-section {
     position: relative;
-    min-height: 80vh; // Reduced height
+    min-height: 100%; // Fill available space
     display: flex;
     align-items: center;
     justify-content: center;
@@ -65,6 +65,11 @@
             font-family: 'Playfair Display', serif;
             letter-spacing: -0.03em;
 
+            // Explicit override for light theme
+            @at-root [data-theme='light'] & {
+                color: #000000;
+            }
+
             .block {
                 display: block;
             }
@@ -72,6 +77,10 @@
             .highlight {
                 color: var(--text-secondary); // Use secondary color for contrast or accent
                 font-style: italic;
+
+                @at-root [data-theme='light'] & {
+                    color: #475569;
+                }
             }
         }
 

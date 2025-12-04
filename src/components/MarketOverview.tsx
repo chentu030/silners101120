@@ -1,10 +1,26 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, Search, ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { BrokerData } from './Charts';
 import './MarketOverview.scss';
 
 interface MarketOverviewProps {
     data: BrokerData[];
+    filters: {
+        broker: string;
+        startDate: string;
+        endDate: string;
+        searchQuery: string;
+        minUpside: string;
+        maxUpside: string;
+    };
+    setFilters: {
+        setBroker: (val: string) => void;
+        setStartDate: (val: string) => void;
+        setEndDate: (val: string) => void;
+        setSearchQuery: (val: string) => void;
+        setMinUpside: (val: string) => void;
+        setMaxUpside: (val: string) => void;
+    };
 }
 
 type SortField = 'date' | 'company' | 'broker' | 'rating' | 'targetPrice' | 'upside';
@@ -12,46 +28,33 @@ type SortOrder = 'asc' | 'desc';
 
 const ITEMS_PER_PAGE = 50;
 
-const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
-    const [selectedBroker, setSelectedBroker] = useState<string>('');
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
-    const [searchQuery, setSearchQuery] = useState<string>('');
-    const [minUpside, setMinUpside] = useState<string>('');
-    const [maxUpside, setMaxUpside] = useState<string>('');
-
+const MarketOverview: React.FC<MarketOverviewProps> = ({ data, filters, setFilters }) => {
+    // Local state for sorting and pagination only
     const [sortField, setSortField] = useState<SortField>('date');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedRow, setSelectedRow] = useState<BrokerData | null>(null);
-    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
-
-    // Get unique brokers for filter
-    const brokers = useMemo(() => {
-        const uniqueBrokers = new Set(data.map(d => d.broker).filter(Boolean));
-        return Array.from(uniqueBrokers).sort();
-    }, [data]);
 
     // Filter and sort data
     const processedData = useMemo(() => {
         let result = [...data];
 
         // Broker Filter
-        if (selectedBroker) {
-            result = result.filter(d => d.broker === selectedBroker);
+        if (filters.broker) {
+            result = result.filter(d => d.broker === filters.broker);
         }
 
         // Date Range Filter
-        if (startDate) {
-            result = result.filter(d => new Date(d.date) >= new Date(startDate));
+        if (filters.startDate) {
+            result = result.filter(d => new Date(d.date) >= new Date(filters.startDate));
         }
-        if (endDate) {
-            result = result.filter(d => new Date(d.date) <= new Date(endDate));
+        if (filters.endDate) {
+            result = result.filter(d => new Date(d.date) <= new Date(filters.endDate));
         }
 
         // Search Filter (Company Name or Code)
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
+        if (filters.searchQuery) {
+            const query = filters.searchQuery.toLowerCase();
             result = result.filter(d =>
                 (d.company && d.company.toLowerCase().includes(query)) ||
                 (d.serialNumber && d.serialNumber.includes(query))
@@ -59,11 +62,11 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
         }
 
         // Upside Range Filter
-        if (minUpside !== '') {
-            result = result.filter(d => (d.upside * 100) >= parseFloat(minUpside));
+        if (filters.minUpside !== '') {
+            result = result.filter(d => (d.upside * 100) >= parseFloat(filters.minUpside));
         }
-        if (maxUpside !== '') {
-            result = result.filter(d => (d.upside * 100) <= parseFloat(maxUpside));
+        if (filters.maxUpside !== '') {
+            result = result.filter(d => (d.upside * 100) <= parseFloat(filters.maxUpside));
         }
 
         // Sorting
@@ -82,7 +85,7 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
         });
 
         return result;
-    }, [data, selectedBroker, startDate, endDate, searchQuery, minUpside, maxUpside, sortField, sortOrder]);
+    }, [data, filters, sortField, sortOrder]);
 
     // Pagination logic
     const totalPages = Math.ceil(processedData.length / ITEMS_PER_PAGE);
@@ -114,85 +117,10 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
 
     return (
         <div className="market-overview">
-            <div className="filters-bar">
-                <div
-                    className="filter-toggle-bar"
-                    onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                >
-                    <span>Show Filters</span>
-                    {isFiltersExpanded ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
-                </div>
+            {/* Filters are now in the dashboard header */}
 
-                <div className={`filters-content ${isFiltersExpanded ? 'expanded' : ''}`}>
-                    {/* Search */}
-                    <div className="filter-group search-group">
-                        <Search size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search Code/Company..."
-                            value={searchQuery}
-                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            className="search-input"
-                        />
-                    </div>
-
-                    {/* Broker Filter */}
-                    <div className="filter-group">
-                        <Filter size={18} />
-                        <select
-                            value={selectedBroker}
-                            onChange={(e) => { setSelectedBroker(e.target.value); setCurrentPage(1); }}
-                            className="filter-select"
-                        >
-                            <option value="">All Brokers</option>
-                            {brokers.map(broker => (
-                                <option key={broker} value={broker}>{broker}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Date Range */}
-                    <div className="filter-group date-group">
-                        <span className="label">Date:</span>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-                            className="date-input"
-                        />
-                        <span className="separator">to</span>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-                            className="date-input"
-                        />
-                    </div>
-
-                    {/* Upside Range */}
-                    <div className="filter-group upside-group">
-                        <span className="label">Upside %:</span>
-                        <input
-                            type="number"
-                            placeholder="Min"
-                            value={minUpside}
-                            onChange={(e) => { setMinUpside(e.target.value); setCurrentPage(1); }}
-                            className="number-input"
-                        />
-                        <span className="separator">-</span>
-                        <input
-                            type="number"
-                            placeholder="Max"
-                            value={maxUpside}
-                            onChange={(e) => { setMaxUpside(e.target.value); setCurrentPage(1); }}
-                            className="number-input"
-                        />
-                    </div>
-
-                    <div className="result-count">
-                        Showing {processedData.length} reports
-                    </div>
-                </div>
+            <div className="result-count-bar">
+                Showing {processedData.length} reports
             </div>
 
             <div className="table-container">

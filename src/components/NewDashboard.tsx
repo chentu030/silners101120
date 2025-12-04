@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Search, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, ArrowRight, ChevronDown, ChevronUp, Calendar, Filter, ChevronLeft, Upload } from 'lucide-react';
+import { useBrokerageData } from '../hooks/useBrokerageData';
 import {
     SimpleScatterChart,
     HistogramChart,
@@ -16,14 +17,19 @@ import Statistics from './Statistics';
 import BrokerageDashboard from './BrokerageDashboard';
 import Articles from './Articles';
 import ErrorBoundary from './ErrorBoundary';
-
-// ... existing imports
-
-// ... inside NewDashboard component render
-
 import FundBasicInfo from './FundBasicInfo';
 import FundHistoricalRanking from './FundHistoricalRanking';
 import './NewDashboard.scss';
+
+// Types for Statistics
+interface SheetData {
+    stocks: any[];
+    industries: any[];
+    sub_industries: any[];
+    related_industries: any[];
+    related_groups: any[];
+    industry_types: any[];
+}
 
 const NewDashboard: React.FC = () => {
     const [query, setQuery] = useState('2330');
@@ -31,7 +37,6 @@ const NewDashboard: React.FC = () => {
     const [filteredData, setFilteredData] = useState<BrokerData[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLoadingScreen, setShowLoadingScreen] = useState(true);
-    // Removed viewMode state
     const [activeTab, setActiveTab] = useState('home'); // Default to home
     const [selectedCompany, setSelectedCompany] = useState('2330');
     const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -42,9 +47,62 @@ const NewDashboard: React.FC = () => {
     });
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
-    // Date Filter State
+    // Dashboard Date Filter State
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    // Market Overview Filter State
+    const [marketBroker, setMarketBroker] = useState<string>('');
+    const [marketStartDate, setMarketStartDate] = useState<string>('');
+    const [marketEndDate, setMarketEndDate] = useState<string>('');
+    const [marketSearchQuery, setMarketSearchQuery] = useState<string>('');
+    const [marketMinUpside, setMarketMinUpside] = useState<string>('');
+    const [marketMaxUpside, setMarketMaxUpside] = useState<string>('');
+
+    const [isMarketFiltersExpanded, setIsMarketFiltersExpanded] = useState(false);
+
+    // Statistics Filter State
+    const [statsViewMode, setStatsViewMode] = useState<'rankings' | 'all'>('rankings');
+    const [statsTimePeriod, setStatsTimePeriod] = useState<'3y' | '5y'>('3y');
+    const [statsSelectedSheet, setStatsSelectedSheet] = useState<string>('1月');
+    const [statsAvailableSheets, setStatsAvailableSheets] = useState<string[]>([]);
+    const [statsSelectedCategory, setStatsSelectedCategory] = useState<keyof SheetData>('stocks');
+    const [statsSearchQuery, setStatsSearchQuery] = useState('');
+    const [statsSelectedTimeframes, setStatsSelectedTimeframes] = useState<string[]>(['1月']);
+    const [isStatsFiltersExpanded, setIsStatsFiltersExpanded] = useState(false);
+    const [isStatsTimeframeDropdownOpen, setIsStatsTimeframeDropdownOpen] = useState(false);
+
+    // Brokerage Data Hook
+    const brokerage = useBrokerageData();
+    const [isChipsFiltersExpanded, setIsChipsFiltersExpanded] = useState(false);
+
+    // Constants for Statistics
+    const allTimeframes = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', 'Q1', 'Q2', 'Q3', 'Q4'];
+    const statsCategories: { key: keyof SheetData; label: string }[] = [
+        { key: 'stocks', label: 'Individual Stocks' },
+        { key: 'industries', label: 'Industry' },
+        { key: 'sub_industries', label: 'Sub-industry' },
+        { key: 'related_industries', label: 'Related Industry' },
+        { key: 'related_groups', label: 'Related Group' },
+        { key: 'industry_types', label: 'Industry Type' },
+    ];
+    // Mock sheets for dropdown (in real app, this might come from data, but for UI we can hardcode or fetch)
+    // Since Statistics.tsx fetches this, we might need to pass the available sheets up or just hardcode common ones if they are static.
+    // Based on Statistics.tsx, it seems dynamic. For now, let's assume a standard set or wait for data.
+    // Actually, Statistics.tsx fetches `rankingsData` which has keys. 
+    // To properly populate the dropdown in parent, we might need to fetch data here or have Statistics pass it up.
+    // For simplicity in this refactor, I will hardcode the months/quarters as they seem standard in `allTimeframes`, 
+    // but `rankingsData` keys might be slightly different. 
+    // Let's use a common list for now and assume it matches.
+    // Mock sheets removed, now dynamic
+    // const rankingSheets = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', 'Q1', 'Q2', 'Q3', 'Q4', 'Yearly'];
+
+
+    // Get unique brokers for Market Overview filter
+    const brokers = useMemo(() => {
+        const uniqueBrokers = new Set(brokerData.map(d => d.broker).filter(Boolean));
+        return Array.from(uniqueBrokers).sort();
+    }, [brokerData]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -55,23 +113,8 @@ const NewDashboard: React.FC = () => {
 
                 let csvText = '';
                 try {
-                    // Try decoding as Big5 first (common for Taiwan stock data)
                     const decoder = new TextDecoder('big5');
                     csvText = decoder.decode(arrayBuffer);
-
-                    // Simple check: if it contains replacement characters or looks wrong, fallback might be needed
-                    // But usually Big5 decoder won't throw, just produce garbage if wrong.
-                    // However, if the file is actually UTF-8, Big5 might still decode it but incorrectly.
-                    // A common heuristic is to check for common UTF-8 sequences or BOM.
-                    // For now, let's try a dual-strategy:
-                    // If the file is UTF-8 with BOM, or valid UTF-8, we might prefer that.
-                    // But since the user said "latest update became garbled", it implies the new file is likely Big5
-                    // and the previous code (response.text()) which does UTF-8 was failing.
-
-                    // Let's try to detect if it's valid UTF-8 first?
-                    // Actually, response.text() uses UTF-8. If that failed (garbled), then it's NOT UTF-8.
-                    // So we should prioritize Big5.
-
                 } catch (e) {
                     console.warn('Big5 decoding failed, falling back to UTF-8');
                     const decoder = new TextDecoder('utf-8');
@@ -80,13 +123,11 @@ const NewDashboard: React.FC = () => {
 
                 Papa.parse(csvText, {
                     complete: (results) => {
-                        console.log('First 5 raw rows:', results.data.slice(1, 6)); // Log first 5 data rows
                         const parsedData: BrokerData[] = results.data.slice(1).map((row: any) => {
                             const targetPriceLow = parseFloat(row[4] ? row[4].replace(/,/g, '') : '0');
                             const targetPriceHigh = parseFloat(row[5] ? row[5].replace(/,/g, '') : '0');
                             const targetPrice = (targetPriceLow + targetPriceHigh) / 2;
                             const closePrice = parseFloat(row[7] ? row[7].replace(/,/g, '') : '0');
-                            // Fix percentage logic: divide by 100 to get decimal (e.g. 10% -> 0.1)
                             const upside = parseFloat(row[8] ? row[8].replace('%', '') : '0') / 100;
                             const epsNext = parseFloat(row[19]);
                             const peNext = parseFloat(row[21]);
@@ -110,7 +151,6 @@ const NewDashboard: React.FC = () => {
                             };
                         }).filter((item: BrokerData) => item.company);
 
-
                         setBrokerData(parsedData);
                         setLoading(false);
                     },
@@ -130,7 +170,6 @@ const NewDashboard: React.FC = () => {
     useEffect(() => {
         if (!selectedCompany) return;
 
-        // Filter by checking if company name includes the selectedCompany (search term)
         let filtered = brokerData.filter(d =>
             d.company && d.company.toUpperCase().includes(selectedCompany.toUpperCase())
         );
@@ -149,43 +188,32 @@ const NewDashboard: React.FC = () => {
     const handleSearch = (searchQuery: string) => {
         if (!searchQuery.trim()) return;
 
-        // Check if there are any matches
         const matched = brokerData.filter(d =>
             d.company && (d.company.includes(searchQuery) || d.company.includes(searchQuery.toUpperCase()))
         );
 
         if (matched.length > 0) {
-            // Use the search query itself as the filter key to allow multiple matches
-            // e.g. "NVDA" will match "NVDA Nvidia" and "NVDA 輝達"
             setSelectedCompany(searchQuery);
-            setQuery(searchQuery); // Sync query state
-            setActiveTab('dashboard'); // Switch to dashboard tab
+            setQuery(searchQuery);
+            setActiveTab('dashboard');
         } else {
             alert('No results found for ' + searchQuery);
         }
     };
 
-    // Handle internal search in dashboard header
     const handleHeaderSearch = (e: React.FormEvent) => {
         e.preventDefault();
         handleSearch(query);
     };
 
-    // Calculate display name (prefer Chinese name if available)
     const displayCompanyName = useMemo(() => {
         if (filteredData.length === 0) return selectedCompany;
-
-        // Check for staleness: if the first item doesn't match the selected company (search query), return selectedCompany
-        // This prevents showing the old company name while filteredData is updating
         const first = filteredData[0];
         if (first.company && !first.company.toUpperCase().includes(selectedCompany.toUpperCase())) {
             return selectedCompany;
         }
-
         const uniqueNames = Array.from(new Set(filteredData.map(d => d.company)));
-        // Find name with Chinese characters
         const chineseName = uniqueNames.find(name => /[\u4e00-\u9fa5]/.test(name));
-
         return chineseName || uniqueNames[0] || selectedCompany;
     }, [filteredData, selectedCompany]);
 
@@ -211,7 +239,7 @@ const NewDashboard: React.FC = () => {
 
     return (
         <div className="new-dashboard">
-            <div className={`dashboard-layout ${isCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`} style={{ display: 'flex', width: '100%', height: '100dvh', overflow: 'hidden' }}>
+            <div className={`dashboard-layout ${isCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
                 <Sidebar
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
@@ -221,9 +249,9 @@ const NewDashboard: React.FC = () => {
                     setIsCollapsed={setIsCollapsed}
                 />
 
-                <div className="dashboard-container" style={{ flex: 1, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <div className="dashboard-container">
                     {activeTab === 'home' ? (
-                        <div style={{ height: '100%', width: '100%', overflowY: 'auto' }}>
+                        <div className="home-view">
                             <HeroSection onSearch={handleSearch} />
                         </div>
                     ) : (
@@ -235,10 +263,15 @@ const NewDashboard: React.FC = () => {
 
                                 <div
                                     className="filter-toggle-bar"
-                                    onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                                    onClick={() => {
+                                        if (activeTab === 'market') setIsMarketFiltersExpanded(!isMarketFiltersExpanded);
+                                        else if (activeTab === 'statistics') setIsStatsFiltersExpanded(!isStatsFiltersExpanded);
+                                        else if (activeTab === 'chips') setIsChipsFiltersExpanded(!isChipsFiltersExpanded);
+                                        else setIsHeaderExpanded(!isHeaderExpanded);
+                                    }}
                                 >
                                     <span>Show Filters</span>
-                                    {isHeaderExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    {(activeTab === 'market' ? isMarketFiltersExpanded : activeTab === 'statistics' ? isStatsFiltersExpanded : activeTab === 'chips' ? isChipsFiltersExpanded : isHeaderExpanded) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </div>
 
                                 {activeTab === 'dashboard' && (
@@ -271,11 +304,326 @@ const NewDashboard: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
+
+                                {activeTab === 'market' && (
+                                    <div className={`filters ${isMarketFiltersExpanded ? 'expanded' : ''}`}>
+                                        {/* Search */}
+                                        <div className="search-bar" style={{ width: 'auto' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search className="icon" size={18} style={{ left: '0.75rem', top: '50%', transform: 'translateY(-50%)', position: 'absolute', color: 'var(--text-secondary)' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search Code/Company..."
+                                                    value={marketSearchQuery}
+                                                    onChange={(e) => setMarketSearchQuery(e.target.value)}
+                                                    style={{ paddingLeft: '2.5rem', width: '200px' }}
+                                                    className="date-input"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Broker Filter */}
+                                        <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Filter size={18} style={{ color: 'var(--text-secondary)' }} />
+                                            <select
+                                                value={marketBroker}
+                                                onChange={(e) => setMarketBroker(e.target.value)}
+                                                className="date-input"
+                                                style={{ minWidth: '140px', cursor: 'pointer' }}
+                                            >
+                                                <option value="">All Brokers</option>
+                                                {brokers.map(broker => (
+                                                    <option key={broker} value={broker}>{broker}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Date Range */}
+                                        <div className="date-range">
+                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Date:</span>
+                                            <input
+                                                type="date"
+                                                value={marketStartDate}
+                                                onChange={(e) => setMarketStartDate(e.target.value)}
+                                                className="date-input"
+                                            />
+                                            <span>to</span>
+                                            <input
+                                                type="date"
+                                                value={marketEndDate}
+                                                onChange={(e) => setMarketEndDate(e.target.value)}
+                                                className="date-input"
+                                            />
+                                        </div>
+
+                                        {/* Upside Range */}
+                                        <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Upside %:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Min"
+                                                value={marketMinUpside}
+                                                onChange={(e) => setMarketMinUpside(e.target.value)}
+                                                className="date-input"
+                                                style={{ width: '70px' }}
+                                            />
+                                            <span style={{ color: 'var(--text-secondary)' }}>-</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Max"
+                                                value={marketMaxUpside}
+                                                onChange={(e) => setMarketMaxUpside(e.target.value)}
+                                                className="date-input"
+                                                style={{ width: '70px' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'statistics' && (
+                                    <div className={`filters ${isStatsFiltersExpanded ? 'expanded' : ''}`}>
+                                        {/* View Mode */}
+                                        <div className="filter-group" style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                className={`date-input ${statsViewMode === 'rankings' ? 'active' : ''}`}
+                                                onClick={() => setStatsViewMode('rankings')}
+                                                style={{
+                                                    background: statsViewMode === 'rankings' ? '#3b82f6' : 'var(--bg-secondary)',
+                                                    color: statsViewMode === 'rankings' ? 'white' : 'var(--text-primary)',
+                                                    cursor: 'pointer',
+                                                    border: '1px solid var(--border-color)'
+                                                }}
+                                            >
+                                                Rankings
+                                            </button>
+                                            <button
+                                                className={`date-input ${statsViewMode === 'all' ? 'active' : ''}`}
+                                                onClick={() => setStatsViewMode('all')}
+                                                style={{
+                                                    background: statsViewMode === 'all' ? '#3b82f6' : 'var(--bg-secondary)',
+                                                    color: statsViewMode === 'all' ? 'white' : 'var(--text-primary)',
+                                                    cursor: 'pointer',
+                                                    border: '1px solid var(--border-color)'
+                                                }}
+                                            >
+                                                All Stocks
+                                            </button>
+                                        </div>
+
+                                        {/* Time Period */}
+                                        <div className="filter-group">
+                                            <select
+                                                value={statsTimePeriod}
+                                                onChange={(e) => setStatsTimePeriod(e.target.value as any)}
+                                                className="date-input"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <option value="3y">Last 3 Years</option>
+                                                <option value="5y">Last 5 Years</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Rankings Specific Filters */}
+                                        {statsViewMode === 'rankings' && (
+                                            <>
+                                                <div className="filter-group">
+                                                    <select
+                                                        value={statsSelectedSheet}
+                                                        onChange={(e) => setStatsSelectedSheet(e.target.value)}
+                                                        className="date-input"
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        {statsAvailableSheets.map(sheet => (
+                                                            <option key={sheet} value={sheet}>{sheet}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="filter-group">
+                                                    <select
+                                                        value={statsSelectedCategory}
+                                                        onChange={(e) => setStatsSelectedCategory(e.target.value as any)}
+                                                        className="date-input"
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        {statsCategories.map(cat => (
+                                                            <option key={cat.key} value={cat.key}>{cat.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* All Stocks Specific Filters */}
+                                        {statsViewMode === 'all' && (
+                                            <div className="filter-group" style={{ position: 'relative' }}>
+                                                <button
+                                                    className="date-input"
+                                                    onClick={() => setIsStatsTimeframeDropdownOpen(!isStatsTimeframeDropdownOpen)}
+                                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '150px', cursor: 'pointer' }}
+                                                >
+                                                    <span>{statsSelectedTimeframes.length > 0 ? `${statsSelectedTimeframes.length} selected` : 'Select Columns'}</span>
+                                                    <ChevronDown size={14} />
+                                                </button>
+
+                                                {isStatsTimeframeDropdownOpen && (
+                                                    <div className="dropdown-menu" style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        left: 0,
+                                                        zIndex: 100,
+                                                        background: 'var(--bg-tertiary)',
+                                                        border: '1px solid var(--border-color)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem',
+                                                        marginTop: '0.5rem',
+                                                        minWidth: '200px',
+                                                        maxHeight: '300px',
+                                                        overflowY: 'auto',
+                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                                                            <button
+                                                                onClick={() => setStatsSelectedTimeframes(allTimeframes)}
+                                                                style={{ fontSize: '12px', padding: '2px 6px', background: '#3b82f6', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
+                                                            >
+                                                                All
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setStatsSelectedTimeframes([])}
+                                                                style={{ fontSize: '12px', padding: '2px 6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', cursor: 'pointer' }}
+                                                            >
+                                                                Clear
+                                                            </button>
+                                                        </div>
+                                                        {allTimeframes.map(tf => (
+                                                            <label key={tf} style={{ display: 'flex', alignItems: 'center', padding: '4px 0', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={statsSelectedTimeframes.includes(tf)}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setStatsSelectedTimeframes([...statsSelectedTimeframes, tf]);
+                                                                        } else {
+                                                                            setStatsSelectedTimeframes(statsSelectedTimeframes.filter(t => t !== tf));
+                                                                        }
+                                                                    }}
+                                                                    style={{ marginRight: '8px' }}
+                                                                />
+                                                                {tf}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Search */}
+                                        <div className="search-bar" style={{ width: 'auto' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search className="icon" size={18} style={{ left: '0.75rem', top: '50%', transform: 'translateY(-50%)', position: 'absolute', color: 'var(--text-secondary)' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search..."
+                                                    value={statsSearchQuery}
+                                                    onChange={(e) => setStatsSearchQuery(e.target.value)}
+                                                    style={{ paddingLeft: '2.5rem', width: '200px' }}
+                                                    className="date-input"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'chips' && (
+                                    <div className={`filters ${isChipsFiltersExpanded ? 'expanded' : ''}`}>
+                                        <div className="filter-group">
+                                            <label style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}><Calendar size={14} /> Start</label>
+                                            <select
+                                                value={brokerage.startDate}
+                                                onChange={(e) => brokerage.setStartDate(e.target.value)}
+                                                className="date-input"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {brokerage.dates.map(d => (
+                                                    <option key={d} value={d}>{d}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="filter-group">
+                                            <label style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}><Calendar size={14} /> End</label>
+                                            <select
+                                                value={brokerage.endDate}
+                                                onChange={(e) => brokerage.setEndDate(e.target.value)}
+                                                className="date-input"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {brokerage.dates.map(d => (
+                                                    <option key={d} value={d}>{d}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="filter-group">
+                                            <label style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}><Search size={14} /> Stock</label>
+                                            <input
+                                                type="text"
+                                                value={brokerage.stockCode}
+                                                onChange={(e) => brokerage.setStockCode(e.target.value)}
+                                                placeholder="e.g. 2330"
+                                                onKeyDown={(e) => e.key === 'Enter' && brokerage.handleSearch()}
+                                                className="date-input"
+                                                style={{ width: '100px' }}
+                                            />
+                                        </div>
+                                        <div className="filter-group">
+                                            <label style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Top N</label>
+                                            <input
+                                                type="number"
+                                                value={brokerage.topN}
+                                                onChange={(e) => brokerage.setTopN(Math.max(1, parseInt(e.target.value) || 1))}
+                                                className="date-input"
+                                                style={{ width: '60px' }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={brokerage.handleSearch}
+                                            disabled={brokerage.loading}
+                                            className="date-input"
+                                            style={{
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                opacity: brokerage.loading ? 0.7 : 1
+                                            }}
+                                        >
+                                            {brokerage.loading ? 'Loading...' : 'Search'}
+                                        </button>
+                                        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 0.5rem' }}></div>
+                                        <label className="date-input" style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            cursor: 'pointer',
+                                            background: 'rgba(59, 130, 246, 0.1)',
+                                            color: '#3b82f6',
+                                            border: '1px solid rgba(59, 130, 246, 0.2)'
+                                        }}>
+                                            <Upload size={14} />
+                                            <span>Upload CSV</span>
+                                            <input
+                                                type="file"
+                                                accept=".csv"
+                                                onChange={brokerage.handleFileUpload}
+                                                style={{ display: 'none' }}
+                                            />
+                                        </label>
+                                    </div>
+                                )}
                             </header>
 
-                            <main className="dashboard-content" style={{ flex: 1, overflow: 'hidden', position: 'relative', minHeight: 0 }}>
+                            <main className="dashboard-content">
                                 {activeTab === 'dashboard' ? (
-                                    <div className="analysis-view" style={{ height: '100%', overflowY: 'auto' }}>
+                                    <div className="analysis-view">
                                         <div className="company-header">
                                             <button className="back-btn" onClick={() => setActiveTab('home')}>
                                                 <ArrowRight style={{ transform: 'rotate(180deg)' }} />
@@ -361,11 +709,54 @@ const NewDashboard: React.FC = () => {
                                         </div>
                                     </div>
                                 ) : activeTab === 'market' ? (
-                                    <MarketOverview data={brokerData} />
+                                    <MarketOverview
+                                        data={brokerData}
+                                        filters={{
+                                            broker: marketBroker,
+                                            startDate: marketStartDate,
+                                            endDate: marketEndDate,
+                                            searchQuery: marketSearchQuery,
+                                            minUpside: marketMinUpside,
+                                            maxUpside: marketMaxUpside
+                                        }}
+                                        setFilters={{
+                                            setBroker: setMarketBroker,
+                                            setStartDate: setMarketStartDate,
+                                            setEndDate: setMarketEndDate,
+                                            setSearchQuery: setMarketSearchQuery,
+                                            setMinUpside: setMarketMinUpside,
+                                            setMaxUpside: setMarketMaxUpside
+                                        }}
+                                    />
                                 ) : activeTab === 'statistics' ? (
-                                    <Statistics />
+                                    <Statistics
+                                        filters={{
+                                            viewMode: statsViewMode,
+                                            timePeriod: statsTimePeriod,
+                                            selectedSheet: statsSelectedSheet,
+                                            selectedCategory: statsSelectedCategory,
+                                            searchQuery: statsSearchQuery,
+                                            selectedTimeframes: statsSelectedTimeframes
+                                        }}
+                                        setFilters={{
+                                            setViewMode: setStatsViewMode,
+                                            setTimePeriod: setStatsTimePeriod,
+                                            setSelectedSheet: setStatsSelectedSheet,
+                                            setSelectedCategory: setStatsSelectedCategory,
+                                            setSearchQuery: setStatsSearchQuery,
+                                            setSelectedTimeframes: setStatsSelectedTimeframes,
+                                            setAvailableSheets: setStatsAvailableSheets
+                                        }}
+                                    />
                                 ) : activeTab === 'chips' ? (
-                                    <BrokerageDashboard />
+                                    <ErrorBoundary>
+                                        <BrokerageDashboard
+                                            data={brokerage.data}
+                                            loading={brokerage.loading}
+                                            error={brokerage.error}
+                                            topN={brokerage.topN}
+                                        />
+                                    </ErrorBoundary>
                                 ) : activeTab === 'articles' ? (
                                     <ErrorBoundary>
                                         <Articles />
@@ -375,14 +766,7 @@ const NewDashboard: React.FC = () => {
                                 ) : activeTab === 'fund-ranking' ? (
                                     <FundHistoricalRanking />
                                 ) : (
-                                    <div className="placeholder-view" style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        height: '100%',
-                                        color: '#94a3b8',
-                                        fontSize: '1.5rem'
-                                    }}>
+                                    <div className="placeholder-view">
                                         Feature coming soon...
                                     </div>
                                 )}
