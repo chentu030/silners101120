@@ -115,7 +115,7 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
     return (
         <div className="market-overview">
             <div className="filters-bar">
-                <div 
+                <div
                     className="filter-toggle-bar"
                     onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
                 >
@@ -124,76 +124,74 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
                 </div>
 
                 <div className={`filters-content ${isFiltersExpanded ? 'expanded' : ''}`}>
-                {/* Search */}
-                <div className="filter-group search-group">
-                    <Search size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search Code/Company..."
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                        className="search-input"
-                    />
-                </div>
+                    {/* Search */}
+                    <div className="filter-group search-group">
+                        <Search size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search Code/Company..."
+                            value={searchQuery}
+                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                            className="search-input"
+                        />
+                    </div>
 
-                {/* Broker Filter */}
-                <div className="filter-group">
-                    <Filter size={18} />
-                    <select
-                        value={selectedBroker}
-                        onChange={(e) => { setSelectedBroker(e.target.value); setCurrentPage(1); }}
-                        className="filter-select"
-                    >
-                        <option value="">All Brokers</option>
-                        {brokers.map(broker => (
-                            <option key={broker} value={broker}>{broker}</option>
-                        ))}
-                    </select>
-                </div>
+                    {/* Broker Filter */}
+                    <div className="filter-group">
+                        <Filter size={18} />
+                        <select
+                            value={selectedBroker}
+                            onChange={(e) => { setSelectedBroker(e.target.value); setCurrentPage(1); }}
+                            className="filter-select"
+                        >
+                            <option value="">All Brokers</option>
+                            {brokers.map(broker => (
+                                <option key={broker} value={broker}>{broker}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                {/* Date Range */}
-                <div className="filter-group date-group">
-                    <span className="label">Date:</span>
-                    <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-                        className="date-input"
-                    />
-                    <span className="separator">to</span>
-                    <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-                        className="date-input"
-                    />
-                </div>
+                    {/* Date Range */}
+                    <div className="filter-group date-group">
+                        <span className="label">Date:</span>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                            className="date-input"
+                        />
+                        <span className="separator">to</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                            className="date-input"
+                        />
+                    </div>
 
-                {/* Upside Range */}
-                <div className="filter-group upside-group">
-                    <span className="label">Upside %:</span>
-                    <input
-                        type="number"
-                        placeholder="Min"
-                        value={minUpside}
-                        onChange={(e) => { setMinUpside(e.target.value); setCurrentPage(1); }}
-                        className="number-input"
-                    />
-                    <span className="separator">-</span>
-                    <input
-                        type="number"
-                        placeholder="Max"
-                        value={maxUpside}
-                        onChange={(e) => { setMaxUpside(e.target.value); setCurrentPage(1); }}
-                        className="number-input"
-                    />
-                </div>
+                    {/* Upside Range */}
+                    <div className="filter-group upside-group">
+                        <span className="label">Upside %:</span>
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            value={minUpside}
+                            onChange={(e) => { setMinUpside(e.target.value); setCurrentPage(1); }}
+                            className="number-input"
+                        />
+                        <span className="separator">-</span>
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            value={maxUpside}
+                            onChange={(e) => { setMaxUpside(e.target.value); setCurrentPage(1); }}
+                            className="number-input"
+                        />
+                    </div>
 
-                <div className="result-count">
-                    Showing {processedData.length} reports
-                </div>
-                    Showing {processedData.length} reports
-                </div>
+                    <div className="result-count">
+                        Showing {processedData.length} reports
+                    </div>
                 </div>
             </div>
 
@@ -233,116 +231,116 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ data }) => {
             </div>
 
             {
-        totalPages > 1 && (
-            <div className="pagination">
-                <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className="page-btn"
-                >
-                    <ChevronLeft size={20} />
-                </button>
-                <span className="page-info">
-                    Page {currentPage} of {totalPages}
-                </span>
-                <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className="page-btn"
-                >
-                    <ChevronRight size={20} />
-                </button>
-            </div>
-        )
-    }
-
-    {
-        selectedRow && (
-            <div className="detail-modal" onClick={() => setSelectedRow(null)}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <h2>{selectedRow.company}</h2>
-                        <button className="close-btn" onClick={() => setSelectedRow(null)}>
-                            <X size={24} />
+                totalPages > 1 && (
+                    <div className="pagination">
+                        <button
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="page-btn"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        <span className="page-info">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className="page-btn"
+                        >
+                            <ChevronRight size={20} />
                         </button>
                     </div>
-                    <div className="modal-body">
-                        <div className="detail-grid">
-                            <div className="detail-item">
-                                <span className="label">發佈日期</span>
-                                <span className="value">{selectedRow.date}</span>
+                )
+            }
+
+            {
+                selectedRow && (
+                    <div className="detail-modal" onClick={() => setSelectedRow(null)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>{selectedRow.company}</h2>
+                                <button className="close-btn" onClick={() => setSelectedRow(null)}>
+                                    <X size={24} />
+                                </button>
                             </div>
-                            <div className="detail-item">
-                                <span className="label">券商</span>
-                                <span className="value">{selectedRow.broker}</span>
+                            <div className="modal-body">
+                                <div className="detail-grid">
+                                    <div className="detail-item">
+                                        <span className="label">發佈日期</span>
+                                        <span className="value">{selectedRow.date}</span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">券商</span>
+                                        <span className="value">{selectedRow.broker}</span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">序號</span>
+                                        <span className="value">{selectedRow.serialNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">檔案來源</span>
+                                        <span className="value">{selectedRow.fileSource || 'N/A'}</span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">投資建議</span>
+                                        <span className={`value rating-badge ${getRatingClass(selectedRow.rating)}`}>
+                                            {selectedRow.rating}
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">目標價範圍</span>
+                                        <span className="value">
+                                            {selectedRow.targetPriceLow > 0 && selectedRow.targetPriceHigh > 0
+                                                ? `${selectedRow.targetPriceLow.toLocaleString()} - ${selectedRow.targetPriceHigh.toLocaleString()}`
+                                                : 'N/A'
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">平均目標價</span>
+                                        <span className="value">
+                                            {selectedRow.targetPrice > 0 ? selectedRow.targetPrice.toLocaleString() : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">預測期間</span>
+                                        <span className="value">{selectedRow.forecastPeriod || 'N/A'} 個月</span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">發佈日收盤價</span>
+                                        <span className="value">
+                                            {selectedRow.closePrice > 0 ? selectedRow.closePrice.toLocaleString() : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">預估上漲空間</span>
+                                        <span className={`value ${selectedRow.upside > 0 ? 'positive' : selectedRow.upside < 0 ? 'negative' : ''}`}>
+                                            {selectedRow.upside !== 0 ? `${(selectedRow.upside * 100).toFixed(2)}%` : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">EPS (Next)</span>
+                                        <span className="value">
+                                            {selectedRow.epsNext !== 0 ? selectedRow.epsNext.toFixed(2) : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="detail-item">
+                                        <span className="label">PE (Next)</span>
+                                        <span className="value">
+                                            {selectedRow.peNext > 0 ? selectedRow.peNext.toFixed(2) : 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="summary-section">
+                                    <h3>摘要</h3>
+                                    <p>{selectedRow.summary || '無摘要資訊'}</p>
+                                </div>
                             </div>
-                            <div className="detail-item">
-                                <span className="label">序號</span>
-                                <span className="value">{selectedRow.serialNumber || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">檔案來源</span>
-                                <span className="value">{selectedRow.fileSource || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">投資建議</span>
-                                <span className={`value rating-badge ${getRatingClass(selectedRow.rating)}`}>
-                                    {selectedRow.rating}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">目標價範圍</span>
-                                <span className="value">
-                                    {selectedRow.targetPriceLow > 0 && selectedRow.targetPriceHigh > 0
-                                        ? `${selectedRow.targetPriceLow.toLocaleString()} - ${selectedRow.targetPriceHigh.toLocaleString()}`
-                                        : 'N/A'
-                                    }
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">平均目標價</span>
-                                <span className="value">
-                                    {selectedRow.targetPrice > 0 ? selectedRow.targetPrice.toLocaleString() : 'N/A'}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">預測期間</span>
-                                <span className="value">{selectedRow.forecastPeriod || 'N/A'} 個月</span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">發佈日收盤價</span>
-                                <span className="value">
-                                    {selectedRow.closePrice > 0 ? selectedRow.closePrice.toLocaleString() : 'N/A'}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">預估上漲空間</span>
-                                <span className={`value ${selectedRow.upside > 0 ? 'positive' : selectedRow.upside < 0 ? 'negative' : ''}`}>
-                                    {selectedRow.upside !== 0 ? `${(selectedRow.upside * 100).toFixed(2)}%` : 'N/A'}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">EPS (Next)</span>
-                                <span className="value">
-                                    {selectedRow.epsNext !== 0 ? selectedRow.epsNext.toFixed(2) : 'N/A'}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="label">PE (Next)</span>
-                                <span className="value">
-                                    {selectedRow.peNext > 0 ? selectedRow.peNext.toFixed(2) : 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="summary-section">
-                            <h3>摘要</h3>
-                            <p>{selectedRow.summary || '無摘要資訊'}</p>
                         </div>
                     </div>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
         </div >
     );
 };

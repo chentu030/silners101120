@@ -907,6 +907,7 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
     const [data, setData] = useState<any>(null);
     const [topN, setTopN] = useState(15);
     const [zipCache, setZipCache] = useState<Map<string, JSZip>>(new Map());
+    const [isControlsExpanded, setIsControlsExpanded] = useState(false);
 
     useEffect(() => {
         fetch(`${import.meta.env.BASE_URL}data/chips/dates.json`)
@@ -1135,68 +1136,77 @@ const BrokerageDashboard: React.FC<BrokerageDashboardProps> = ({ basePath: _base
     return (
         <div className="brokerage-dashboard">
             <div className="controls-bar">
-                <div className="control-group">
-                    <label><Calendar size={16} /> Start</label>
-                    <select value={startDate} onChange={e => setStartDate(e.target.value)}>
-                        {dates.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                        ))}
-                    </select>
+                <div
+                    className="filter-toggle-bar"
+                    onClick={() => setIsControlsExpanded(!isControlsExpanded)}
+                >
+                    <span>Show Filters</span>
+                    {isControlsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
-                <div className="control-group">
-                    <label><Calendar size={16} /> End</label>
-                    <select value={endDate} onChange={e => setEndDate(e.target.value)}>
-                        {dates.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="control-group">
-                    <label><Search size={16} /> Stock</label>
-                    <input
-                        type="text"
-                        value={stockCode}
-                        onChange={e => setStockCode(e.target.value)}
-                        placeholder="e.g. 2330"
-                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    />
-                </div>
-                <div className="control-group">
-                    <label>Top N</label>
-                    <input
-                        type="number"
-                        value={topN}
-                        onChange={e => setTopN(Math.max(1, parseInt(e.target.value) || 1))}
-                        style={{ width: '80px' }}
-                    />
-                </div>
-                <button className="search-btn" onClick={handleSearch} disabled={loading}>
-                    {loading ? 'Loading...' : 'Search'}
-                </button>
 
-                <div className="divider" style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 1rem' }}></div>
+                <div className={`controls-content ${isControlsExpanded ? 'expanded' : ''}`}>
+                    <div className="control-group">
+                        <label><Calendar size={16} /> Start</label>
+                        <select value={startDate} onChange={e => setStartDate(e.target.value)}>
+                            {dates.map(d => (
+                                <option key={d} value={d}>{d}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="control-group">
+                        <label><Calendar size={16} /> End</label>
+                        <select value={endDate} onChange={e => setEndDate(e.target.value)}>
+                            {dates.map(d => (
+                                <option key={d} value={d}>{d}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="control-group">
+                        <label><Search size={16} /> Stock</label>
+                        <input
+                            type="text"
+                            value={stockCode}
+                            onChange={e => setStockCode(e.target.value)}
+                            placeholder="e.g. 2330"
+                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                        />
+                    </div>
+                    <div className="control-group">
+                        <label>Top N</label>
+                        <input
+                            type="number"
+                            value={topN}
+                            onChange={e => setTopN(Math.max(1, parseInt(e.target.value) || 1))}
+                            style={{ width: '80px' }}
+                        />
+                    </div>
+                    <button className="search-btn" onClick={handleSearch} disabled={loading}>
+                        {loading ? 'Loading...' : 'Search'}
+                    </button>
 
-                <label className="upload-btn" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    color: '#3b82f6',
-                    border: '1px solid rgba(59, 130, 246, 0.2)',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.5rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                }}>
-                    <Upload size={16} />
-                    <span>Upload CSV</span>
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileUpload}
-                        style={{ display: 'none' }}
-                    />
-                </label>
+                    <div className="divider" style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 1rem' }}></div>
+
+                    <label className="upload-btn" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        color: '#3b82f6',
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}>
+                        <Upload size={16} />
+                        <span>Upload CSV</span>
+                        <input
+                            type="file"
+                            accept=".csv"
+                            onChange={handleFileUpload}
+                            style={{ display: 'none' }}
+                        />
+                    </label>
                 </div>
             </div>
 

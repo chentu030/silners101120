@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Search, ArrowRight, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import {
     SimpleScatterChart,
     HistogramChart,
