@@ -113,11 +113,12 @@ export const SimpleScatterChart: React.FC<ScatterProps> = ({ data, xKey, yKey, x
             }
         },
         scales: {
-            x: { title: { display: true, text: xLabel }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { title: { display: true, text: xLabel, color: 'var(--text-secondary)' }, grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-secondary)' } },
             y: {
-                title: { display: true, text: yLabel },
-                grid: { color: 'rgba(255,255,255,0.05)' },
+                title: { display: true, text: yLabel, color: 'var(--text-secondary)' },
+                grid: { color: 'var(--border-color)' },
                 ticks: {
+                    color: 'var(--text-secondary)',
                     callback: (v: string | number) => {
                         const val = Number(v);
                         return isPercentage ? val.toFixed(2) + '%' : val.toFixed(2);
@@ -181,12 +182,13 @@ export const TimeHistoryChart: React.FC<HistoryProps> = ({ data, dataKey, label,
             x: {
                 type: 'time',
                 time: { unit: 'month', displayFormats: { month: 'yyyy/MM' } },
-                grid: { color: 'rgba(255,255,255,0.05)' }
+                grid: { color: 'var(--border-color)' },
+                ticks: { color: 'var(--text-secondary)' }
             },
             y: {
-                title: { display: true, text: label },
-                grid: { color: 'rgba(255,255,255,0.05)' },
-                ticks: { callback: (v: any) => isPercentage ? v + '%' : v }
+                title: { display: true, text: label, color: 'var(--text-secondary)' },
+                grid: { color: 'var(--border-color)' },
+                ticks: { color: 'var(--text-secondary)', callback: (v: any) => isPercentage ? v + '%' : v }
             }
         }
     };
@@ -302,8 +304,8 @@ export const HistogramChart: React.FC<HistogramProps> = ({ data, dataKey, color 
             }
         },
         scales: {
-            x: { grid: { display: false } },
-            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+            x: { grid: { display: false }, ticks: { color: 'var(--text-secondary)' } },
+            y: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-secondary)' } }
         }
     };
 
@@ -402,8 +404,8 @@ export const LatestBarChart: React.FC<LatestBarProps> = ({ data, dataKey, label,
             }
         },
         scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.05)' } },
-            y: { grid: { display: false } }
+            x: { grid: { color: 'var(--border-color)' }, ticks: { color: 'var(--text-secondary)' } },
+            y: { grid: { display: false }, ticks: { color: 'var(--text-secondary)' } }
         }
     };
 
@@ -446,7 +448,7 @@ export const RatingDistribution: React.FC<ChartProps> = ({ data }) => {
             datasets: [{
                 data: dataValues,
                 backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-                borderColor: 'rgba(15, 17, 26, 0.8)',
+                borderColor: 'var(--bg-primary)',
                 borderWidth: 2,
                 items: itemValues // Custom property
             }]
@@ -458,7 +460,7 @@ export const RatingDistribution: React.FC<ChartProps> = ({ data }) => {
     const options: any = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'right', labels: { color: '#e2e8f0' } },
+            legend: { position: 'right', labels: { color: 'var(--text-secondary)' } },
             tooltip: {
                 callbacks: {
                     label: (ctx: any) => {
