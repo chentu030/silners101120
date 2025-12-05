@@ -7,7 +7,8 @@
     flex-direction: column;
     padding: 1.5rem 1rem;
     z-index: 50;
-    overflow: hidden;
+    overflow: visible;
+    position: relative;
     transition: padding 0.3s ease;
 
     // In grid layout, the width is determined by the grid column,
@@ -338,6 +339,7 @@
         transform: translateX(0);
         box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: visible !important;
 
         &.collapsed {
             transform: translateX(-100%);
@@ -350,7 +352,7 @@
             }
 
             .nav-item .label {
-                display: block;
+                display: block !important;
             }
 
             .nav-item .submenu-arrow {
@@ -364,6 +366,7 @@
             right: -32px; // Stick out
             top: 1rem;
             width: 32px;
+            z-index: 9999;
             height: 32px;
             border-radius: 0 4px 4px 0;
             background: var(--bg-secondary);

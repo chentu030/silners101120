@@ -17,8 +17,17 @@ import Statistics from './Statistics';
 import BrokerageDashboard from './BrokerageDashboard';
 import Articles from './Articles';
 import ErrorBoundary from './ErrorBoundary';
-import FundBasicInfo from './FundBasicInfo';
+import FundBasicInfoComponent from './FundBasicInfo';
 import FundHistoricalRanking from './FundHistoricalRanking';
+import FundComparison from '../pages/FundComparison';
+// import { fundDataService, FundBasicInfo } from '../services/FundDataService';
+// Local interface to avoid import crash
+interface FundBasicInfo {
+    id: string;
+    name: string;
+    dataType?: '淨值' | '市價'; // Data type for this selection
+}
+import fundList from '../data/fund-list.json';
 import './NewDashboard.scss';
 
 // Types for Statistics
@@ -37,7 +46,7 @@ const NewDashboard: React.FC = () => {
     const [filteredData, setFilteredData] = useState<BrokerData[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLoadingScreen, setShowLoadingScreen] = useState(true);
-    const [activeTab, setActiveTab] = useState('home'); // Default to home
+    const [activeTab, setActiveTab] = useState<string>('home'); // Default to home
     const [selectedCompany, setSelectedCompany] = useState('2330');
     const [isCollapsed, setIsCollapsed] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -76,8 +85,62 @@ const NewDashboard: React.FC = () => {
     const brokerage = useBrokerageData();
     const [isChipsFiltersExpanded, setIsChipsFiltersExpanded] = useState(false);
 
+    // Fund Comparison State
+    const [fundSearchQuery, setFundSearchQuery] = useState('');
+    const [fundStartDate, setFundStartDate] = useState('2024-01-01');
+    const [fundEndDate, setFundEndDate] = useState('');
+
+    const [fundAlignment, setFundAlignment] = useState<'price' | 'percentage'>('percentage');
+    const [isFundFiltersExpanded, setIsFundFiltersExpanded] = useState(false);
+
+    // Fund Search State (Lifted from FundComparison)
+    // Fund Search State (Lifted from FundComparison)
+    const [fundBasicInfo, setFundBasicInfo] = useState<FundBasicInfo[]>([]);
+    const [selectedFunds, setSelectedFunds] = useState<FundBasicInfo[]>([]);
+
+    // Load basic info for search
+    useEffect(() => {
+        // Load static data
+        console.log('Loading fund list, length:', fundList?.length);
+        if (fundList && Array.isArray(fundList)) {
+            setFundBasicInfo(fundList as FundBasicInfo[]);
+        } else {
+            console.error('Fund list is not an array or is empty:', fundList);
+        }
+    }, []);
+
+    // Filter search results - expand each fund into 淨值 and 市價 variants
+    const fundSearchResults = useMemo(() => {
+        console.log('Filtering funds. Query:', fundSearchQuery, 'Total funds:', fundBasicInfo?.length);
+        if (!fundSearchQuery || !fundBasicInfo) return [];
+        const query = fundSearchQuery.toLowerCase();
+        const matchingFunds = fundBasicInfo.filter(fund => {
+            if (!fund) return false;
+            const idMatch = fund.id && fund.id.toLowerCase().includes(query);
+            const nameMatch = fund.name && fund.name.toLowerCase().includes(query);
+            return idMatch || nameMatch;
+        }).slice(0, 5); // Limit base results since we expand to 2x
+
+        // Expand each fund into 淨值 and 市價 variants
+        const expandedResults: FundBasicInfo[] = [];
+        matchingFunds.forEach(fund => {
+            // Check if this fund+dataType combo is already selected
+            const isNetSelected = selectedFunds.find(f => f.id === fund.id && f.dataType === '淨值');
+            const isMarketSelected = selectedFunds.find(f => f.id === fund.id && f.dataType === '市價');
+
+            if (!isNetSelected) {
+                expandedResults.push({ ...fund, dataType: '淨值' });
+            }
+            if (!isMarketSelected) {
+                expandedResults.push({ ...fund, dataType: '市價' });
+            }
+        });
+
+        console.log('Expanded results:', expandedResults.length);
+        return expandedResults;
+    }, [fundSearchQuery, fundBasicInfo, selectedFunds]);
+
     // Constants for Statistics
-    const allTimeframes = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', 'Q1', 'Q2', 'Q3', 'Q4'];
     const statsCategories: { key: keyof SheetData; label: string }[] = [
         { key: 'stocks', label: 'Individual Stocks' },
         { key: 'industries', label: 'Industry' },
@@ -229,6 +292,7 @@ const NewDashboard: React.FC = () => {
             case 'market': return 'Market Overview';
             case 'fund-basic': return 'Fund Basic Information';
             case 'fund-ranking': return 'Fund Historical Ranking';
+            case 'fund-comparison': return 'Fund Comparison';
             default: return tab.charAt(0).toUpperCase() + tab.slice(1);
         }
     };
@@ -267,11 +331,12 @@ const NewDashboard: React.FC = () => {
                                         if (activeTab === 'market') setIsMarketFiltersExpanded(!isMarketFiltersExpanded);
                                         else if (activeTab === 'statistics') setIsStatsFiltersExpanded(!isStatsFiltersExpanded);
                                         else if (activeTab === 'chips') setIsChipsFiltersExpanded(!isChipsFiltersExpanded);
+                                        else if (activeTab === 'fund-comparison') setIsFundFiltersExpanded(!isFundFiltersExpanded);
                                         else setIsHeaderExpanded(!isHeaderExpanded);
                                     }}
                                 >
                                     <span>Show Filters</span>
-                                    {(activeTab === 'market' ? isMarketFiltersExpanded : activeTab === 'statistics' ? isStatsFiltersExpanded : activeTab === 'chips' ? isChipsFiltersExpanded : isHeaderExpanded) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    {(activeTab === 'market' ? isMarketFiltersExpanded : activeTab === 'statistics' ? isStatsFiltersExpanded : activeTab === 'chips' ? isChipsFiltersExpanded : activeTab === 'fund-comparison' ? isFundFiltersExpanded : isHeaderExpanded) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </div>
 
                                 {activeTab === 'dashboard' && (
@@ -293,6 +358,60 @@ const NewDashboard: React.FC = () => {
                                         </div>
                                         <div className="search-bar">
                                             <form onSubmit={handleHeaderSearch}>
+                                                {/* Search Dropdown */}
+                                                {fundSearchQuery && (
+                                                    <div className="search-results-dropdown" style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        left: 0,
+                                                        right: 0,
+                                                        background: 'var(--bg-primary)',
+                                                        border: '1px solid var(--border-color)',
+                                                        borderRadius: '8px',
+                                                        marginTop: '0.5rem',
+                                                        maxHeight: '300px',
+                                                        overflowY: 'auto',
+                                                        zIndex: 9999,
+                                                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)'
+                                                    }}>
+                                                        {fundSearchResults.length > 0 ? (
+                                                            fundSearchResults.map(fund => (
+                                                                <div
+                                                                    key={fund.id}
+                                                                    className="result-item"
+                                                                    style={{
+                                                                        padding: '0.75rem 1rem',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.75rem',
+                                                                        borderBottom: '1px solid var(--border-color)'
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        setSelectedFunds([...selectedFunds, fund]);
+                                                                        setFundSearchQuery('');
+                                                                    }}
+                                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                >
+                                                                    <span style={{
+                                                                        fontFamily: 'monospace',
+                                                                        background: 'var(--bg-secondary)',
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '0.8rem',
+                                                                        color: 'var(--text-secondary)'
+                                                                    }}>{fund.id}</span>
+                                                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{fund.name}</span>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                                                No funds found.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <Search className="icon" size={18} />
                                                 <input
                                                     type="text"
@@ -464,56 +583,6 @@ const NewDashboard: React.FC = () => {
                                                     <span>{statsSelectedTimeframes.length > 0 ? `${statsSelectedTimeframes.length} selected` : 'Select Columns'}</span>
                                                     <ChevronDown size={14} />
                                                 </button>
-
-                                                {isStatsTimeframeDropdownOpen && (
-                                                    <div className="dropdown-menu" style={{
-                                                        position: 'absolute',
-                                                        top: '100%',
-                                                        left: 0,
-                                                        zIndex: 100,
-                                                        background: 'var(--bg-tertiary)',
-                                                        border: '1px solid var(--border-color)',
-                                                        borderRadius: '8px',
-                                                        padding: '0.5rem',
-                                                        marginTop: '0.5rem',
-                                                        minWidth: '200px',
-                                                        maxHeight: '300px',
-                                                        overflowY: 'auto',
-                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                                    }}>
-                                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <button
-                                                                onClick={() => setStatsSelectedTimeframes(allTimeframes)}
-                                                                style={{ fontSize: '12px', padding: '2px 6px', background: '#3b82f6', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
-                                                            >
-                                                                All
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setStatsSelectedTimeframes([])}
-                                                                style={{ fontSize: '12px', padding: '2px 6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', cursor: 'pointer' }}
-                                                            >
-                                                                Clear
-                                                            </button>
-                                                        </div>
-                                                        {allTimeframes.map(tf => (
-                                                            <label key={tf} style={{ display: 'flex', alignItems: 'center', padding: '4px 0', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={statsSelectedTimeframes.includes(tf)}
-                                                                    onChange={(e) => {
-                                                                        if (e.target.checked) {
-                                                                            setStatsSelectedTimeframes([...statsSelectedTimeframes, tf]);
-                                                                        } else {
-                                                                            setStatsSelectedTimeframes(statsSelectedTimeframes.filter(t => t !== tf));
-                                                                        }
-                                                                    }}
-                                                                    style={{ marginRight: '8px' }}
-                                                                />
-                                                                {tf}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
                                         )}
 
@@ -617,6 +686,128 @@ const NewDashboard: React.FC = () => {
                                                 style={{ display: 'none' }}
                                             />
                                         </label>
+                                    </div>
+                                )}
+                                {activeTab === 'fund-comparison' && (
+                                    <div className={`filters ${isFundFiltersExpanded ? 'expanded' : ''}`}>
+                                        {/* Search */}
+                                        <div className="search-bar" style={{ width: 'auto', position: 'relative' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search className="icon" size={18} style={{ left: '0.75rem', top: '50%', transform: 'translateY(-50%)', position: 'absolute', color: 'var(--text-secondary)' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search Fund (Code/Name)..."
+                                                    value={fundSearchQuery}
+                                                    onChange={(e) => setFundSearchQuery(e.target.value)}
+                                                    style={{ paddingLeft: '2.5rem', width: '250px' }}
+                                                    className="date-input"
+                                                />
+                                                {/* Search Results Dropdown */}
+                                                {fundSearchQuery && (
+                                                    <div className="search-results-dropdown" style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        left: 0,
+                                                        right: 0,
+                                                        background: 'var(--bg-primary)',
+                                                        border: '1px solid var(--border-color)',
+                                                        borderRadius: '8px',
+                                                        marginTop: '0.5rem',
+                                                        maxHeight: '300px',
+                                                        overflowY: 'auto',
+                                                        zIndex: 9999,
+                                                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)'
+                                                    }}>
+                                                        {fundSearchResults.length > 0 ? (
+                                                            fundSearchResults.map(fund => (
+                                                                <div
+                                                                    key={`${fund.id}-${fund.dataType}`}
+                                                                    className="result-item"
+                                                                    style={{
+                                                                        padding: '0.5rem 1rem',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        gap: '0.25rem',
+                                                                        borderBottom: '1px solid var(--border-color)'
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        setSelectedFunds([...selectedFunds, fund]);
+                                                                        setFundSearchQuery('');
+                                                                    }}
+                                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                >
+                                                                    {/* Row 1: ID, Short Name, Type */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                        <span style={{
+                                                                            fontFamily: 'monospace',
+                                                                            background: 'var(--bg-secondary)',
+                                                                            padding: '2px 6px',
+                                                                            borderRadius: '4px',
+                                                                            fontSize: '0.8rem',
+                                                                            color: 'var(--text-secondary)'
+                                                                        }}>{fund.id}</span>
+
+                                                                        <span style={{
+                                                                            fontSize: '0.9rem',
+                                                                            color: 'var(--text-primary)',
+                                                                            fontWeight: 600
+                                                                        }}>
+                                                                            {fund.name.length > 6 ? fund.name.substring(0, 6) : fund.name}
+                                                                        </span>
+
+                                                                        <span style={{
+                                                                            padding: '2px 6px',
+                                                                            borderRadius: '4px',
+                                                                            fontSize: '0.7rem',
+                                                                            fontWeight: 600,
+                                                                            marginLeft: 'auto',
+                                                                            background: fund.dataType === '淨值'
+                                                                                ? 'rgba(16, 185, 129, 0.15)'
+                                                                                : 'rgba(59, 130, 246, 0.15)',
+                                                                            color: fund.dataType === '淨值'
+                                                                                ? '#10b981'
+                                                                                : '#3b82f6',
+                                                                            border: fund.dataType === '淨值'
+                                                                                ? '1px solid rgba(16, 185, 129, 0.3)'
+                                                                                : '1px solid rgba(59, 130, 246, 0.3)'
+                                                                        }}>{fund.dataType}</span>
+                                                                    </div>
+
+                                                                    {/* Row 2: Full Name */}
+                                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                        {fund.name}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                                                No funds found.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Date Range */}
+                                        <div className="date-range">
+                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Range:</span>
+                                            <input
+                                                type="date"
+                                                value={fundStartDate}
+                                                onChange={(e) => setFundStartDate(e.target.value)}
+                                                className="date-input"
+                                            />
+                                            <span>to</span>
+                                            <input
+                                                type="date"
+                                                value={fundEndDate}
+                                                onChange={(e) => setFundEndDate(e.target.value)}
+                                                className="date-input"
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </header>
@@ -762,9 +953,20 @@ const NewDashboard: React.FC = () => {
                                         <Articles />
                                     </ErrorBoundary>
                                 ) : activeTab === 'fund-basic' ? (
-                                    <FundBasicInfo />
+                                    <FundBasicInfoComponent />
                                 ) : activeTab === 'fund-ranking' ? (
                                     <FundHistoricalRanking />
+                                ) : activeTab === 'fund-comparison' ? (
+                                    <ErrorBoundary>
+                                        <FundComparison
+                                            selectedFunds={selectedFunds}
+                                            setSelectedFunds={setSelectedFunds}
+                                            startDate={fundStartDate}
+                                            endDate={fundEndDate}
+                                            alignment={fundAlignment}
+                                            setAlignment={setFundAlignment}
+                                        />
+                                    </ErrorBoundary>
                                 ) : (
                                     <div className="placeholder-view">
                                         Feature coming soon...

@@ -50,7 +50,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onLogout, onL
             icon: PieChart,
             subItems: [
                 { id: 'fund-basic', label: 'Basic Information' },
-                { id: 'fund-ranking', label: 'Historical Ranking' }
+                { id: 'fund-ranking', label: 'Historical Ranking' },
+                { id: 'fund-comparison', label: 'Comparison' }
             ]
         },
         { id: 'articles', label: 'Articles', icon: FileText },
@@ -71,17 +72,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onLogout, onL
 
             <div className="sidebar-logo" onClick={onLogoClick}>
                 <div className={`logo-container ${isCollapsed ? 'collapsed' : ''}`}>
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="logo-icon">
-                        <rect width="32" height="32" rx="8" fill="url(#logo-gradient)" fillOpacity="0.1" />
-                        <path d="M8 22L14 14L19 19L25 11" stroke="url(#logo-gradient)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M21 11H25V15" stroke="url(#logo-gradient)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        <defs>
-                            <linearGradient id="logo-gradient" x1="0" y1="32" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-                                <stop stopColor="#3b82f6" />
-                                <stop offset="1" stopColor="#8b5cf6" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
+                    <img
+                        src={`${import.meta.env.BASE_URL}data/logo.png?v=updated`}
+                        alt="MarketVision Logo"
+                        className="logo-icon"
+                        style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                    />
                     {!isCollapsed && (
                         <h2 className="logo-text">Market<span>Vision</span></h2>
                     )}
