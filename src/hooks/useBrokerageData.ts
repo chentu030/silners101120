@@ -239,7 +239,9 @@ export const useBrokerageData = () => {
                     } else {
                         dayRows = parseDoubleColumnCSV(decodedText);
                     }
-                    allRows.push(...dayRows);
+                    for (const row of dayRows) {
+                        allRows.push(row);
+                    }
 
                 } catch (err) {
                     console.warn(`Failed to process ${date}:`, err);
