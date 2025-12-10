@@ -225,7 +225,7 @@ export const useBrokerageData = () => {
                     const uint8Array = await file.async('uint8array');
                     let decodedText = '';
                     try {
-                        const decoder = new TextDecoder('big5');
+                        const decoder = new TextDecoder('big5', { fatal: true });
                         decodedText = decoder.decode(uint8Array);
                     } catch (e) {
                         const decoder = new TextDecoder('utf-8');
@@ -277,7 +277,7 @@ export const useBrokerageData = () => {
                 const buffer = e.target?.result as ArrayBuffer;
                 let decodedText = '';
                 try {
-                    const decoder = new TextDecoder('big5');
+                    const decoder = new TextDecoder('big5', { fatal: true });
                     decodedText = decoder.decode(buffer);
                 } catch (e) {
                     const decoder = new TextDecoder('utf-8');
