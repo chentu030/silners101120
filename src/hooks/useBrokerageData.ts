@@ -76,6 +76,41 @@ export const useBrokerageData = () => {
         return rows;
     };
 
+    const parseOTCcsv = (text: string) => {
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        const rows: any[] = [];
+        let startIndex = 0;
+
+        // Look for the header line "序號,券商,價格,買進股數,賣出股數"
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('序號,券商,價格')) {
+                startIndex = i + 1;
+                break;
+            }
+        }
+
+        for (let i = startIndex; i < lines.length; i++) {
+            const line = lines[i];
+            // Format: "1","1040 臺銀證券","56.50","1000","0"
+            // Simple split by comma might work if no commas in values, but safer to respect quotes
+            // Strip quotes first
+            const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+
+            if (parts.length >= 5) {
+                const broker = parts[1];
+                if (broker) {
+                    rows.push({
+                        broker: broker,
+                        price: parseFloat(parts[2]),
+                        buyVol: parseInt(parts[3]) || 0,
+                        sellVol: parseInt(parts[4]) || 0
+                    });
+                }
+            }
+        }
+        return rows;
+    };
+
     const processStockData = (rawRows: any[]) => {
         const brokerMap = new Map<string, BrokerSummary>();
 
@@ -197,7 +232,13 @@ export const useBrokerageData = () => {
                         decodedText = decoder.decode(uint8Array);
                     }
 
-                    const dayRows = parseDoubleColumnCSV(decodedText);
+                    let dayRows = [];
+                    // Detect file type
+                    if (decodedText.includes('券商買賣證券成交價量資訊')) {
+                        dayRows = parseOTCcsv(decodedText);
+                    } else {
+                        dayRows = parseDoubleColumnCSV(decodedText);
+                    }
                     allRows.push(...dayRows);
 
                 } catch (err) {
@@ -243,7 +284,20 @@ export const useBrokerageData = () => {
                     decodedText = decoder.decode(buffer);
                 }
 
-                const rows = parseDoubleColumnCSV(decodedText);
+                let rows = [];
+                if (decodedText.includes('券商買賣證券成交價量資訊')) {
+                    rows = parseOTCcsv(decodedText);
+                } else {
+                    rows = parseDoubleColumnCSV(decodedText);
+                }
+
+                if (rows.length === 0) {
+                    // Try the other parser just in case
+                    if (!decodedText.includes('券商買賣證券成交價量資訊')) {
+                        const retryRows = parseOTCcsv(decodedText);
+                        if (retryRows.length > 0) rows = retryRows;
+                    }
+                }
                 if (rows.length === 0) {
                     throw new Error('No valid data found in CSV');
                 }
